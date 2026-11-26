@@ -1,0 +1,2254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>AI TOEIC Speaking Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+          },
+          colors: {
+            navy: {
+              800: '#1E3A8A',
+              900: '#0F172A',
+            }
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased selection:bg-blue-100 selection:text-blue-900">
+
+  <!-- 전체 컨테이너 -->
+  <div class="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+    
+    <!-- 상단 헤더 -->
+    <header class="bg-navy-900 text-white px-4 sm:px-5 py-3.5 sm:py-4 rounded-2xl shadow-md flex flex-wrap items-center justify-between gap-2.5 mb-5 sm:mb-6">
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="showView('view-landing')">
+        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-extrabold text-sm shrink-0">TS</div>
+        <h1 class="text-base sm:text-xl font-bold tracking-tight">AI TOEIC Speaking Simulator</h1>
+      </div>
+      <span class="bg-white/15 text-blue-100 text-[11px] sm:text-sm font-semibold px-2.5 sm:px-3 py-1 rounded-full">
+        CBT 실전 모의고사 & 예상 점수
+      </span>
+    </header>
+
+    <!-- 알림 메시지 박스 (alert() 대체용 커스텀 배너) -->
+    <div id="toast-box" class="hidden mb-4 p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-sm font-medium flex items-center justify-between shadow-sm">
+      <span id="toast-message"></span>
+      <button type="button" onclick="hideToast()" class="ml-4 text-amber-700 hover:text-amber-950 font-bold cursor-pointer">✕</button>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 1. 랜딩 페이지 (테스트 모드 및 입력 방식 선택) -->
+    <!-- ========================================== -->
+    <section id="view-landing" class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-8 shadow-sm">
+      <div class="max-w-2xl">
+        <span class="inline-block bg-blue-50 text-navy-800 text-xs font-bold px-3 py-1 rounded-full mb-3">
+          실전 CBT 환경 · 파트별 공식 평가기준 채점
+        </span>
+        <h2 class="text-xl sm:text-3xl font-extrabold text-navy-900 tracking-tight mb-2.5">
+          내 토익 스피킹 예상 점수를 확인해보세요
+        </h2>
+        <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+          실제 고사장과 동일한 문제 음성 안내·카운트다운과 AI 정밀 채점 엔진으로 파트별 약점을 분석하고 예상 점수와 등급을 산출합니다.
+        </p>
+      </div>
+
+      <!-- 응시 방식 선택 토글 -->
+      <div class="mt-6 bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span class="text-xs sm:text-sm font-bold text-navy-900">응시 방식 선택</span>
+            <span id="env-mode-badge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-navy-800 text-white">실제 음성 입력 모드</span>
+          </div>
+          <div class="inline-flex bg-slate-200/80 p-1 rounded-xl">
+            <button type="button" id="btn-env-voice" onclick="setInputMode('voice')" class="px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold bg-navy-900 text-white shadow-sm transition-all cursor-pointer touch-manipulation">
+              🎙️ 실제 음성 입력
+            </button>
+            <button type="button" id="btn-env-text" onclick="setInputMode('text')" class="px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-navy-900 transition-all cursor-pointer touch-manipulation">
+              ⌨️ 텍스트 입력 모드
+            </button>
+          </div>
+        </div>
+        <div id="env-mode-detail-box" class="bg-white border border-slate-200 rounded-xl p-3.5 text-xs sm:text-sm text-slate-700 leading-relaxed">
+          <div class="font-bold text-navy-900 mb-1">🎙️ 실제 음성 입력 모드 (실전 CBT 환경 통합)</div>
+          <p class="text-slate-600">
+            실제 토익 스피킹 시험과 동일하게 마이크에 대고 직접 영어로 말하여 응시합니다. 시험 중에는 실시간 자막이 표시되지 않으며, 종료 후 성적표에서 내 발화 내용과 문법·점수를 확인할 수 있습니다. <span class="text-blue-700 font-medium">(PC Chrome · 모바일 Safari/Chrome 기본 브라우저 권장)</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- AI 정밀 채점 엔진 연결 (구글 계정 로그인 또는 API 키 설정) -->
+      <div class="mt-4 bg-blue-50/60 border border-blue-200 rounded-2xl p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <div class="flex items-center gap-2">
+            <span class="text-xs sm:text-sm font-bold text-navy-900">🤖 Gemini AI 실시간 채점 연결</span>
+            <span id="ai-engine-badge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700">기본 분석 모드</span>
+          </div>
+          <div class="inline-flex bg-white border border-blue-200 p-0.5 rounded-lg text-[11px] font-bold">
+            <button type="button" id="btn-auth-tab-google" onclick="switchAiAuthTab('google')" class="px-2.5 py-1 rounded-md bg-navy-800 text-white transition-colors cursor-pointer">
+              구글 계정 로그인
+            </button>
+            <button type="button" id="btn-auth-tab-apikey" onclick="switchAiAuthTab('apikey')" class="px-2.5 py-1 rounded-md text-slate-600 hover:text-navy-900 transition-colors cursor-pointer">
+              API 키 입력
+            </button>
+          </div>
+        </div>
+
+        <!-- 탭 1: 각자 구글 아이디 로그인 (Google OAuth 2.0) -->
+        <div id="ai-auth-panel-google" class="space-y-3">
+          <p class="text-xs text-slate-600 leading-relaxed">
+            각자의 <strong>Google 계정으로 로그인</strong>하면 API 키를 따로 복사할 필요 없이 본인 계정의 Gemini AI 권한으로 정밀 채점을 받을 수 있습니다.
+          </p>
+
+          <!-- 로그인 완료 상태 표시 바 -->
+          <div id="google-user-connected-bar" class="hidden flex flex-wrap items-center justify-between gap-2 bg-white border border-emerald-200 rounded-xl p-3">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <img id="google-user-avatar" src="" alt="프로필" class="w-8 h-8 rounded-full border border-slate-200 shrink-0 hidden" />
+              <div class="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0" id="google-user-initial">G</div>
+              <div class="min-w-0">
+                <div id="google-user-name" class="text-xs sm:text-sm font-bold text-navy-900 truncate">Google 계정 연결됨</div>
+                <div id="google-user-email" class="text-[11px] text-slate-500 truncate"></div>
+              </div>
+            </div>
+            <button type="button" onclick="signOutGoogleGemini()" class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 border border-slate-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer">
+              로그아웃
+            </button>
+          </div>
+
+          <!-- 미로그인 상태: Google 로그인 실행 및 OAuth Client ID 설정 -->
+          <div id="google-user-login-box" class="space-y-2.5">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <button type="button" onclick="signInWithGoogleGemini()" class="inline-flex items-center justify-center gap-2.5 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-colors cursor-pointer">
+                <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17Z"/>
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24Z"/>
+                  <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14Z"/>
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96Z"/>
+                </svg>
+                <span>Google 계정으로 로그인하여 Gemini 연결</span>
+              </button>
+              <button type="button" onclick="toggleOAuthConfigBox()" class="px-3 py-2 text-[11px] sm:text-xs font-semibold text-blue-700 hover:bg-blue-100/70 rounded-xl transition-colors cursor-pointer text-left sm:text-center">
+                ⚙️ OAuth 클라이언트 ID 설정
+              </button>
+            </div>
+
+            <!-- OAuth Client ID 설정 접이식 패널 (배포자 또는 사용자 입력) -->
+            <div id="oauth-client-config-box" class="hidden bg-white border border-blue-200 rounded-xl p-3 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-navy-900">Google Cloud OAuth 2.0 클라이언트 ID</span>
+                <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" class="text-[11px] text-blue-700 font-semibold hover:underline">
+                  Cloud Console에서 발급 ↗
+                </a>
+              </div>
+              <p class="text-[11px] text-slate-500 leading-relaxed">
+                승인된 자바스크립트 원본에 현재 GitHub Pages 주소(<code id="current-origin-hint" class="bg-slate-100 px-1 rounded"></code>)를 등록한 웹 클라이언트 ID를 입력하세요.
+              </p>
+              <div class="flex gap-2">
+                <input type="text" id="google-oauth-client-id-input" placeholder="1234567890-xxxx.apps.googleusercontent.com" class="flex-1 px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:border-navy-800" />
+                <button type="button" onclick="saveGoogleClientId()" class="px-3 py-1.5 bg-navy-800 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg cursor-pointer">
+                  저장
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 탭 2: API 키 직접 입력 -->
+        <div id="ai-auth-panel-apikey" class="hidden space-y-2.5">
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Google AI Studio에서 발급받은 무료 Gemini API 키를 입력해 연결할 수도 있습니다.
+            </p>
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" class="text-[11px] font-semibold text-blue-700 hover:underline shrink-0 ml-2">
+              API 키 발급 ↗
+            </a>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input type="password" id="gemini-api-key-input" placeholder="AIza... 로 시작하는 Gemini API 키 입력" class="flex-1 px-3.5 py-2 text-xs sm:text-sm bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-navy-800" />
+            <div class="flex gap-2">
+              <button type="button" onclick="saveGeminiApiKey()" class="flex-1 sm:flex-none px-4 py-2 bg-navy-800 hover:bg-blue-700 text-white text-xs sm:text-sm font-semibold rounded-xl transition-colors cursor-pointer">
+                키 저장
+              </button>
+              <button type="button" id="btn-clear-api-key" onclick="clearGeminiApiKey()" class="hidden px-3 py-2 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs sm:text-sm font-semibold rounded-xl transition-colors cursor-pointer">
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 모드 선택 2열 카드 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 mt-6">
+        <!-- 카드 1: 미니테스트 -->
+        <div class="border-2 border-slate-200 hover:border-navy-800 rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col justify-between bg-white hover:shadow-md">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="bg-blue-100 text-navy-800 text-xs font-bold px-2.5 py-1 rounded-md">빠른 진단</span>
+              <span class="text-xs font-semibold text-slate-400">약 3분 소요</span>
+            </div>
+            <h3 class="text-lg sm:text-xl font-bold text-navy-800 mb-3">⚡ 3분 미니테스트 (Mini Test)</h3>
+            <ul class="space-y-2 text-sm text-slate-600 mb-6">
+              <li class="flex items-start gap-2">
+                <span class="text-blue-600 font-bold">✓</span>
+                <span>핵심 3문항 압축 (Part 1 + Part 3 + Part 5 랜덤 출제)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-blue-600 font-bold">✓</span>
+                <span>원어민 문제 음성(TTS) 및 실전 카운트다운 적용</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-blue-600 font-bold">✓</span>
+                <span>예상 점수 구간(±10점) 및 문법 오류 빠른 진단</span>
+              </li>
+            </ul>
+          </div>
+          <button onclick="prepareTest('mini')" class="w-full py-3.5 px-5 bg-navy-800 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors shadow-sm cursor-pointer touch-manipulation">
+            미니테스트 시작하기 →
+          </button>
+        </div>
+
+        <!-- 카드 2: 풀테스트 -->
+        <div class="border-2 border-slate-200 hover:border-navy-800 rounded-2xl p-5 sm:p-6 transition-all duration-200 flex flex-col justify-between bg-white hover:shadow-md">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-md">실전 대비</span>
+              <span class="text-xs font-semibold text-slate-400">약 20분 소요</span>
+            </div>
+            <h3 class="text-lg sm:text-xl font-bold text-navy-800 mb-3">🎯 20분 실전 풀테스트 (Full Test)</h3>
+            <ul class="space-y-2 text-sm text-slate-600 mb-6">
+              <li class="flex items-start gap-2">
+                <span class="text-amber-600 font-bold">✓</span>
+                <span>전 영역 11문항 (Part 1 ~ Part 5 매회 랜덤 출제)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-amber-600 font-bold">✓</span>
+                <span>기출 유형 Part 2 사진 묘사 및 Part 4 표 정보 포함</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-amber-600 font-bold">✓</span>
+                <span>10점 단위 정밀 성적표 및 전 문항 AI 문법 교정</span>
+              </li>
+            </ul>
+          </div>
+          <button onclick="prepareTest('full')" class="w-full py-3.5 px-5 bg-white hover:bg-slate-100 text-navy-800 border-2 border-navy-800 font-semibold rounded-xl transition-colors cursor-pointer touch-manipulation">
+            실전 풀테스트 시작하기 →
+          </button>
+        </div>
+      </div>
+
+      <!-- 하단 등급 기준 안내 요약 -->
+      <div class="mt-7 pt-5 border-t border-slate-100">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">점수별 등급 환산 기준표</p>
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+          <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+            <div class="font-bold text-slate-700">110 ~ 130점</div>
+            <div class="text-slate-500 mt-0.5">IM1 ~ IM3</div>
+          </div>
+          <div class="bg-blue-50/70 p-2.5 rounded-xl border border-blue-200">
+            <div class="font-bold text-navy-800">140 ~ 150점</div>
+            <div class="text-blue-700 mt-0.5">IH</div>
+          </div>
+          <div class="bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-200">
+            <div class="font-bold text-indigo-900">160 ~ 170점</div>
+            <div class="text-indigo-700 mt-0.5">AL</div>
+          </div>
+          <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+            <div class="font-bold text-slate-700">180 ~ 190점</div>
+            <div class="text-slate-500 mt-0.5">AM</div>
+          </div>
+          <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 col-span-2 sm:col-span-1">
+            <div class="font-bold text-slate-700">200점</div>
+            <div class="text-slate-500 mt-0.5">AH</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. 마이크 환경 체크 화면 (실제 음성 입력 모드 전용) -->
+    <!-- ========================================== -->
+    <section id="view-mic" class="hidden bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+      <h2 class="text-xl sm:text-2xl font-bold text-navy-900 mb-2">🎙️ 마이크 및 음성 인식 환경 테스트</h2>
+      <p class="text-slate-600 text-sm mb-5">
+        실제 음성 입력을 위해 브라우저 상단의 마이크 권한을 허용하고, 아래 문장을 소리 내어 읽어 게이지가 움직이는지 확인하세요.
+      </p>
+
+      <div class="bg-slate-100 border-l-4 border-navy-800 p-5 rounded-xl text-base font-medium text-navy-900 mb-5">
+        "Hello, I am checking my microphone before starting the TOEIC Speaking test."
+      </div>
+
+      <div class="mb-2 flex justify-between text-xs font-semibold text-slate-500">
+        <span>마이크 입력 레벨</span>
+        <span id="mic-db-label">대기 중</span>
+      </div>
+      <div class="w-full h-4 bg-slate-200 rounded-full overflow-hidden mb-3">
+        <div id="mic-bar" class="h-full w-0 bg-emerald-500 transition-all duration-75 rounded-full"></div>
+      </div>
+      <p id="mic-status" class="text-sm font-medium text-slate-600 mb-6">마이크 연결을 요청하고 있습니다...</p>
+
+      <div class="flex flex-wrap gap-3">
+        <button onclick="showView('view-landing')" class="px-5 py-3 bg-white hover:bg-slate-100 text-navy-800 border border-navy-800 font-semibold rounded-xl text-sm transition-colors cursor-pointer">
+          ← 뒤로가기
+        </button>
+        <button onclick="startTestSession()" class="flex-1 sm:flex-none px-6 py-3 bg-navy-800 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm cursor-pointer">
+          환경 확인 완료 · 시험 시작하기 →
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2-2. 텍스트 입력 환경 테스트 화면 (텍스트 입력 모드 전용) -->
+    <!-- ========================================== -->
+    <section id="view-text-prep" class="hidden bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+      <h2 class="text-xl sm:text-2xl font-bold text-navy-900 mb-2">⌨️ 텍스트 및 음성 자판 입력 테스트</h2>
+      <p class="text-slate-600 text-sm mb-5">
+        시험 시작 전 아래 예시 문장을 키보드로 직접 입력하거나, 모바일·PC 자판의 마이크(음성 받아쓰기) 기능을 이용해 글로 정상 변환되는지 테스트해 보세요.
+      </p>
+
+      <div class="bg-slate-100 border-l-4 border-emerald-600 p-5 rounded-xl text-base font-medium text-navy-900 mb-5">
+        "Hello, I am testing my text input before starting the TOEIC Speaking test."
+      </div>
+
+      <div class="mb-2 flex justify-between text-xs font-semibold text-slate-500">
+        <span>연습 입력창</span>
+        <span id="text-prep-count">0 단어 입력됨</span>
+      </div>
+      <textarea id="text-prep-input" rows="2" oninput="updateTextPrepStatus()" placeholder="여기에 위 문장을 입력하거나 음성 받아쓰기로 입력해 보세요..." class="w-full p-3.5 text-sm border-2 border-slate-300 rounded-xl focus:outline-none focus:border-emerald-600 bg-white mb-3"></textarea>
+      <p id="text-prep-status" class="text-sm font-medium text-slate-600 mb-6">입력창을 클릭해 타이핑 또는 음성 자판 입력이 정상 작동하는지 확인하세요.</p>
+
+      <div class="flex flex-wrap gap-3">
+        <button onclick="showView('view-landing')" class="px-5 py-3 bg-white hover:bg-slate-100 text-navy-800 border border-navy-800 font-semibold rounded-xl text-sm transition-colors cursor-pointer">
+          ← 뒤로가기
+        </button>
+        <button onclick="startTestSession()" class="flex-1 sm:flex-none px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm cursor-pointer">
+          입력 확인 완료 · 시험 시작하기 →
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. CBT 실전 시험 응시 화면 -->
+    <!-- ========================================== -->
+    <section id="view-test" class="hidden bg-white border border-slate-200 rounded-2xl p-4 sm:p-8 shadow-sm">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-4 mb-4 sm:mb-5 border-b border-slate-200">
+        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <span id="cbt-part-badge" class="bg-navy-800 text-white text-xs sm:text-sm font-bold px-2.5 sm:px-3 py-1 rounded-lg">
+            Part 1
+          </span>
+          <span id="cbt-mode-label" class="text-xs sm:text-sm font-semibold text-slate-500">
+            Mini Test
+          </span>
+          <span id="cbt-env-pill" class="text-[11px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+            실제 음성 입력
+          </span>
+        </div>
+        <div class="flex items-center justify-between sm:justify-end gap-2">
+          <button type="button" id="btn-replay-tts" onclick="replayQuestionAudio()" class="text-xs font-semibold px-3 py-2 sm:py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-navy-800 border border-blue-200 transition-colors cursor-pointer touch-manipulation">
+            🔊 문제 음성 듣기
+          </button>
+          <div id="cbt-progress-text" class="text-xs sm:text-sm font-extrabold text-navy-900 bg-slate-100 px-3 py-2 sm:py-1 rounded-lg">
+            Question 1 of 3
+          </div>
+        </div>
+      </div>
+
+      <div id="cbt-question-area" class="bg-slate-50 border border-slate-200 border-l-4 border-l-navy-800 p-4 sm:p-6 rounded-xl mb-5 sm:mb-6">
+      </div>
+
+      <div class="border border-slate-200 rounded-2xl p-4 sm:p-6 text-center bg-white shadow-inner">
+        <div id="timer-phase-label" class="text-sm sm:text-base font-bold text-amber-600 mb-1">
+          준비 시간 (Preparation Time)
+        </div>
+        <div id="timer-seconds" class="text-4xl sm:text-5xl font-extrabold text-navy-900 tabular-nums my-1.5 sm:my-2">
+          00:45
+        </div>
+        
+        <div class="w-full h-3 bg-slate-200 rounded-full overflow-hidden my-3.5 sm:my-4">
+          <div id="timer-progress-bar" class="h-full w-full bg-navy-800 transition-all duration-300 ease-linear"></div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2.5 sm:gap-3 justify-center my-3.5 sm:my-4">
+          <button id="btn-skip-prep" onclick="skipPreparation()" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-white hover:bg-slate-100 text-navy-800 border border-navy-800 font-semibold rounded-xl text-sm transition-colors cursor-pointer touch-manipulation">
+            준비 건너뛰고 바로 답변 시작
+          </button>
+          <button id="btn-next-q" onclick="finishCurrentQuestion(false)" class="hidden w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl text-sm transition-colors shadow-sm cursor-pointer touch-manipulation">
+            답변 완료 · 다음 문항으로 →
+          </button>
+        </div>
+
+        <div id="rec-meter-wrap" class="hidden max-w-md mx-auto my-3">
+          <div class="flex justify-between text-[11px] font-semibold text-rose-600 mb-1">
+            <span>🔴 마이크 음성 입력 감지</span>
+            <span id="rec-mic-status">소리 감지 중...</span>
+          </div>
+          <div class="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div id="rec-mic-bar" class="h-full w-0 bg-rose-500 transition-all duration-75 rounded-full"></div>
+          </div>
+        </div>
+
+        <!-- 실제 음성 입력 모드(실전 모드 통합): 실시간 자막 숨김 안내 -->
+        <div id="voice-mode-status-box" class="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-600">
+          🎯 <strong>실전 음성 모드:</strong> 실제 고사장과 동일하게 답변 중 실시간 자막이 표시되지 않습니다. 마이크에 대고 영어로 말씀하시면 종료 후 성적표에서 분석 결과를 확인할 수 있습니다.
+        </div>
+
+        <!-- 텍스트 입력 모드 전용: 답변 입력창 (모바일 음성 키보드 받아쓰기 호환) -->
+        <div id="text-mode-input-wrap" class="hidden mt-4 text-left">
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="manual-stt-input" class="text-xs sm:text-sm font-bold text-navy-900">⌨️ 영어 답변 입력 (키보드 타이핑 또는 기기 자판 음성 입력 사용)</label>
+            <span id="text-mode-hint" class="text-[11px] text-slate-500">준비 시간이 끝나면 입력할 수 있습니다</span>
+          </div>
+          <textarea id="manual-stt-input" rows="3" placeholder="답변 시간이 시작되면 여기에 영어 답변을 입력하거나, 모바일 키보드의 마이크(음성 받아쓰기) 버튼을 눌러 글로 변환하세요." class="w-full p-3 text-sm border-2 border-slate-300 rounded-xl focus:outline-none focus:border-navy-800 bg-white disabled:bg-slate-100 disabled:text-slate-400"></textarea>
+        </div>
+
+        <!-- 음성 인식 차단/오류 시 긴급 안내 배너 -->
+        <div id="stt-fallback-wrap" class="hidden mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-left">
+          <p id="stt-error-guide" class="text-xs text-rose-700 font-semibold"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 4. AI 채점 로딩 화면 -->
+    <!-- ========================================== -->
+    <section id="view-loading" class="hidden bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-sm">
+      <div class="w-12 h-12 border-4 border-blue-200 border-t-navy-800 rounded-full animate-spin mx-auto mb-5"></div>
+      <h2 class="text-xl font-bold text-navy-800 mb-2">🤖 AI 채점관이 답변을 정밀 분석하고 있습니다...</h2>
+      <p class="text-sm text-slate-600">
+        발화 속도(WPM), 침묵 구간, 문법 정확도 및 파트별 공식 평가기준 점수를 계산 중입니다.
+      </p>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 5. AI 예상 점수 및 등급 성적표 화면 -->
+    <!-- ========================================== -->
+    <section id="view-result" class="hidden space-y-6">
+      
+      <div class="bg-gradient-to-br from-navy-900 to-navy-800 text-white rounded-2xl p-7 sm:p-9 text-center shadow-lg">
+        <div id="res-mode-badge" class="inline-block bg-white/15 text-blue-100 text-xs sm:text-sm font-semibold px-3.5 py-1 rounded-full mb-3">
+          AI 예상 성적 리포트
+        </div>
+        <div id="res-score-display" class="text-3xl sm:text-5xl font-extrabold tracking-tight my-2">
+          예상 점수: 150점
+        </div>
+        <div class="mt-3">
+          <span id="res-grade-pill" class="inline-block bg-emerald-500/25 border border-emerald-400/40 text-emerald-200 px-5 py-1.5 rounded-full font-bold text-base sm:text-lg">
+            예상 등급: IH (Intermediate High)
+          </span>
+        </div>
+        <p id="res-grade-desc" class="mt-4 text-sm sm:text-base text-slate-200 max-w-xl mx-auto leading-relaxed">
+        </p>
+      </div>
+
+      <div id="mini-upsell-box" class="hidden bg-slate-100 border-2 border-dashed border-navy-800/40 rounded-2xl p-6 text-center">
+        <h3 class="text-lg font-bold text-navy-900 mb-1.5">🔒 Part 2(사진 묘사) & Part 4(표 정보 답변) 미응시</h3>
+        <p class="text-sm text-slate-600 mb-4 max-w-xl mx-auto">
+          미니테스트는 핵심 3문항 기반 추정치입니다. 11문항 실전 풀테스트를 응시하면 10점 단위 정밀 점수와 전체 5개 파트 분석표를 확인할 수 있습니다.
+        </p>
+        <button onclick="prepareTest('full')" class="px-6 py-2.5 bg-navy-800 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors cursor-pointer">
+          실전 풀테스트(11문항) 도전하기 →
+        </button>
+      </div>
+
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h3 class="text-lg font-bold text-navy-900 mb-2">📊 종합 총평 및 등급 상승 전략</h3>
+        <p id="res-overall-comment" class="text-sm sm:text-base text-slate-600 leading-relaxed"></p>
+      </div>
+
+      <div id="res-questions-container" class="space-y-4"></div>
+
+      <div class="pt-2 pb-8">
+        <button onclick="showView('view-landing')" class="w-full py-3.5 bg-navy-800 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors shadow-sm cursor-pointer">
+          처음 화면으로 돌아가기
+        </button>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. 토익 스피킹 다중 문제 풀 (랜덤 출제용)
+    // ==========================================
+    const PART1_POOL = [
+      {
+        referenceText: "Welcome to the annual Green Tech Innovation Conference. Before the keynote speech begins in the main auditorium, please pick up your name badge and welcome packet at the registration desk on the first floor. Refreshments will be served in the lobby until nine-thirty.",
+        contentHtml: `<p class="text-base sm:text-lg font-medium text-slate-800 leading-relaxed">"Welcome to the annual Green Tech Innovation Conference. Before the keynote speech begins in the main auditorium, please pick up your name badge and welcome packet at the registration desk on the first floor. Refreshments will be served in the lobby until nine-thirty."</p>`
+      },
+      {
+        referenceText: "Attention, shoppers. Our store will be closing in fifteen minutes. Please bring your final selections to the checkout counters located near the main entrance. Thank you for shopping with us today, and we look forward to seeing you again soon.",
+        contentHtml: `<p class="text-base sm:text-lg font-medium text-slate-800 leading-relaxed">"Attention, shoppers. Our store will be closing in fifteen minutes. Please bring your final selections to the checkout counters located near the main entrance. Thank you for shopping with us today, and we look forward to seeing you again soon."</p>`
+      },
+      {
+        referenceText: "Thank you for calling Horizon Customer Support. Our representatives are currently assisting other callers. For faster service, please visit our website to track your order, schedule a return, or chat with our virtual assistant twenty-four hours a day.",
+        contentHtml: `<p class="text-base sm:text-lg font-medium text-slate-800 leading-relaxed">"Thank you for calling Horizon Customer Support. Our representatives are currently assisting other callers. For faster service, please visit our website to track your order, schedule a return, or chat with our virtual assistant twenty-four hours a day."</p>`
+      },
+      {
+        referenceText: "Good morning, passengers on Flight four-oh-two to Seattle. Due to heavy fog at our destination, boarding will be delayed by approximately thirty minutes. We apologize for the inconvenience and appreciate your patience while we ensure a safe departure.",
+        contentHtml: `<p class="text-base sm:text-lg font-medium text-slate-800 leading-relaxed">"Good morning, passengers on Flight four-oh-two to Seattle. Due to heavy fog at our destination, boarding will be delayed by approximately thirty minutes. We apologize for the inconvenience and appreciate your patience while we ensure a safe departure."</p>`
+      },
+      {
+        referenceText: "Are you looking to upgrade your home office? Visit Metro Furniture this weekend for our seasonal clearance sale. Enjoy up to forty percent off ergonomic chairs, standing desks, and storage cabinets while supplies last.",
+        contentHtml: `<p class="text-base sm:text-lg font-medium text-slate-800 leading-relaxed">"Are you looking to upgrade your home office? Visit Metro Furniture this weekend for our seasonal clearance sale. Enjoy up to forty percent off ergonomic chairs, standing desks, and storage cabinets while supplies last."</p>`
+      },
+      {
+        referenceText: "Welcome to the City Art Museum. Photography without flash is permitted in all permanent galleries. However, taking pictures or recording videos is strictly prohibited in the special exhibition hall on the second floor.",
+        contentHtml: `<p class="text-base sm:text-lg font-medium text-slate-800 leading-relaxed">"Welcome to the City Art Museum. Photography without flash is permitted in all permanent galleries. However, taking pictures or recording videos is strictly prohibited in the special exhibition hall on the second floor."</p>`
+      }
+    ];
+
+    const PART2_POOL = [
+      {
+        sceneTitle: "Part 2 Picture",
+        referenceText: "This picture was taken at a supermarket. A woman wearing a casual top is pushing a shopping cart down the aisle and reaching for an item on the shelf.",
+        imageUrl: "https://images.pexels.com/photos/3962285/pexels-photo-3962285.jpeg?auto=compress&cs=tinysrgb&w=960",
+        fallbackUrl: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=960&q=80"
+      },
+      {
+        sceneTitle: "Part 2 Picture",
+        referenceText: "This picture was taken in a modern office. Two coworkers sitting side by side at a desk are looking at a laptop screen and discussing their work.",
+        imageUrl: "https://images.pexels.com/photos/3182812/pexels-photo-3182812.jpeg?auto=compress&cs=tinysrgb&w=960",
+        fallbackUrl: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=960&q=80"
+      },
+      {
+        sceneTitle: "Part 2 Picture",
+        referenceText: "This picture was taken at a restaurant. A server wearing an apron is standing beside a table and serving food and drinks to seated customers.",
+        imageUrl: "https://images.pexels.com/photos/3184183/pexels-photo-3184183.jpeg?auto=compress&cs=tinysrgb&w=960",
+        fallbackUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=960&q=80"
+      },
+      {
+        sceneTitle: "Part 2 Picture",
+        referenceText: "This picture was taken inside a library. A woman standing next to wooden bookshelves is holding an open book and reading it.",
+        imageUrl: "https://images.pexels.com/photos/3747468/pexels-photo-3747468.jpeg?auto=compress&cs=tinysrgb&w=960",
+        fallbackUrl: "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=960&q=80"
+      },
+      {
+        sceneTitle: "Part 2 Picture",
+        referenceText: "This picture was taken in a home kitchen. A woman standing at the counter is preparing a meal and cutting vegetables on a cutting board.",
+        imageUrl: "https://images.pexels.com/photos/4259140/pexels-photo-4259140.jpeg?auto=compress&cs=tinysrgb&w=960",
+        fallbackUrl: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=960&q=80"
+      },
+      {
+        sceneTitle: "Part 2 Picture",
+        referenceText: "This picture was taken at an electronics shop. A man and a woman are standing at a display table, examining a smartphone together.",
+        imageUrl: "https://images.pexels.com/photos/3756679/pexels-photo-3756679.jpeg?auto=compress&cs=tinysrgb&w=960",
+        fallbackUrl: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=960&q=80"
+      },
+      {
+        sceneTitle: "Part 2 Picture",
+        referenceText: "This picture was taken at a cafe counter. A barista is taking an order from a customer standing in front of the register.",
+        imageUrl: "https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=960",
+        fallbackUrl: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=960&q=80"
+      },
+      {
+        sceneTitle: "Part 2 Picture",
+        referenceText: "This picture was taken in a conference room. Several colleagues are seated around a meeting table, talking and reviewing documents together.",
+        imageUrl: "https://images.pexels.com/photos/1181396/pexels-photo-1181396.jpeg?auto=compress&cs=tinysrgb&w=960",
+        fallbackUrl: "https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&w=960&q=80"
+      }
+    ];
+
+    const PART3_SETS = [
+      {
+        topic: "영화 관람 습관",
+        situation: "Imagine that a friend is asking you some questions about going to the movies. Answer each question as soon as you hear it.",
+        q5: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 5: How often do you go to the movie theater, and who do you usually go with?</p>`,
+        q6: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 6: What kind of movies do you prefer to watch at a theater rather than at home?</p>`,
+        q7: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 7: Do you think reading online reviews before choosing a movie is helpful? Why or why not?</p>`
+      },
+      {
+        topic: "온라인 쇼핑",
+        situation: "Imagine that a marketing firm is doing research in your country. You have agreed to participate in a telephone interview about online shopping. Answer each question as soon as you hear it.",
+        q5: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 5: How often do you shop online, and what kinds of items do you usually buy?</p>`,
+        q6: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 6: What is the most important factor you consider before purchasing a product online?</p>`,
+        q7: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 7: Do you prefer shopping at physical retail stores or online websites? Please explain your reasons.</p>`
+      },
+      {
+        topic: "건강과 운동",
+        situation: "Imagine that a local fitness center is conducting a survey on exercise habits. Answer each question as soon as you hear it.",
+        q5: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 5: How many days a week do you exercise, and what kind of physical activity do you enjoy most?</p>`,
+        q6: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 6: Do you prefer exercising indoors at a gym or outdoors in a park?</p>`,
+        q7: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 7: What are the biggest benefits of exercising with a friend or a group compared to working out alone?</p>`
+      },
+      {
+        topic: "여가 및 여행",
+        situation: "Imagine that a travel magazine is interviewing readers about vacation planning. Answer each question as soon as you hear it.",
+        q5: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 5: When was the last time you went on a trip, and where did you go?</p>`,
+        q6: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 6: What type of accommodation do you usually choose when traveling, and why?</p>`,
+        q7: `<p class="text-base sm:text-lg font-semibold text-navy-900">Question 7: Do you think it is better to plan every detail of a trip in advance or keep the schedule flexible? Why?</p>`
+      }
+    ];
+
+    const PART4_SETS = [
+      {
+        tableHtml: `
+          <div class="overflow-x-auto mb-3">
+            <table class="w-full text-sm text-left border-collapse bg-white rounded-lg overflow-hidden">
+              <thead><tr class="bg-navy-900 text-white"><th colspan="2" class="p-3">Digital Marketing Workshop Schedule (Oct 15)</th></tr></thead>
+              <tbody class="divide-y divide-slate-200">
+                <tr><td class="p-2.5 font-medium">09:30 AM - 11:00 AM</td><td class="p-2.5">Social Media Analytics (Room 201) - Sarah Jenkins</td></tr>
+                <tr><td class="p-2.5 font-medium">11:15 AM - 12:30 PM</td><td class="p-2.5">Content Creation Strategy (Room 204) - David Kim</td></tr>
+                <tr class="bg-rose-50/60"><td class="p-2.5 font-medium">01:30 PM - 03:00 PM</td><td class="p-2.5">Search Engine Optimization (Main Hall) - <span class="text-rose-600 font-bold">Cancelled</span></td></tr>
+              </tbody>
+            </table>
+          </div>`,
+        q8: `Question 8: What time does the workshop start, and what is the first session about?`,
+        q9: `Question 9: I heard the Search Engine Optimization session is taking place in Room 204. Is that correct?`,
+        q10: `Question 10: Can you give me all the details about the morning sessions?`
+      },
+      {
+        tableHtml: `
+          <div class="overflow-x-auto mb-3">
+            <table class="w-full text-sm text-left border-collapse bg-white rounded-lg overflow-hidden">
+              <thead><tr class="bg-navy-900 text-white"><th colspan="2" class="p-3">Annual Tech Career Fair - Grand Convention Center (Nov 12)</th></tr></thead>
+              <tbody class="divide-y divide-slate-200">
+                <tr><td class="p-2.5 font-medium">10:00 AM - 11:30 AM</td><td class="p-2.5">Resume Review Clinic (Hall A) - Free for Registered Guests</td></tr>
+                <tr class="bg-amber-50/70"><td class="p-2.5 font-medium">01:00 PM - 02:30 PM</td><td class="p-2.5">AI Engineering Panel Talk (Auditorium B) - <span class="text-amber-700 font-bold">Moved to Room 302</span></td></tr>
+                <tr><td class="p-2.5 font-medium">03:00 PM - 05:00 PM</td><td class="p-2.5">On-site Networking & Interviews (Hall C) - Bring 3 Copies of Resume</td></tr>
+              </tbody>
+            </table>
+          </div>`,
+        q8: `Question 8: Where is the career fair being held, and what time does the first event begin?`,
+        q9: `Question 9: I plan to attend the AI Engineering Panel Talk in Auditorium B. Is it still scheduled there?`,
+        q10: `Question 10: Could you tell me everything scheduled for the afternoon?`
+      },
+      {
+        tableHtml: `
+          <div class="overflow-x-auto mb-3">
+            <table class="w-full text-sm text-left border-collapse bg-white rounded-lg overflow-hidden">
+              <thead><tr class="bg-navy-900 text-white"><th colspan="2" class="p-3">Employee Wellness Day Program (Friday, May 8)</th></tr></thead>
+              <tbody class="divide-y divide-slate-200">
+                <tr><td class="p-2.5 font-medium">09:00 AM - 10:00 AM</td><td class="p-2.5">Morning Yoga & Stretching (Rooftop Garden) - Instructor: Mia Park</td></tr>
+                <tr><td class="p-2.5 font-medium">10:30 AM - 11:45 AM</td><td class="p-2.5">Healthy Meal Prep Workshop (Cafeteria) - Max 25 Participants</td></tr>
+                <tr class="bg-rose-50/60"><td class="p-2.5 font-medium">02:00 PM - 03:30 PM</td><td class="p-2.5">Stress Management Seminar (Conference Room 1) - <span class="text-rose-600 font-bold">Postponed to Next Week</span></td></tr>
+              </tbody>
+            </table>
+          </div>`,
+        q8: `Question 8: Who is leading the Morning Yoga session, and where does it take place?`,
+        q9: `Question 9: I'm looking forward to the Stress Management Seminar at 2:00 PM today. Can I just walk in?`,
+        q10: `Question 10: Can you give me all the information about the morning activities?`
+      }
+    ];
+
+    const PART5_POOL = [
+      `"Companies should allow employees to work from home at least two days a week."`,
+      `"Public transportation in major cities should be free for all residents to reduce traffic congestion."`,
+      `"Taking online courses is more effective for university students than attending traditional in-person lectures."`,
+      `"Companies should assign an experienced mentor to every newly hired employee during their first three months."`,
+      `"Working for a small startup company offers better career growth than working for a large corporation."`
+    ];
+
+    // 배열에서 중복 없이 N개 무작위 추출 헬퍼
+    function pickRandomItems(arr, count) {
+      const shuffled = [...arr].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count);
+    }
+
+    // 응시 시작 시마다 새로운 랜덤 시험 세트 동적 생성
+    function buildRandomExamSet(mode) {
+      const p1Picked = pickRandomItems(PART1_POOL, 2);
+      const p2Picked = pickRandomItems(PART2_POOL, 2);
+      const p3Set = pickRandomItems(PART3_SETS, 1)[0];
+      const p4Set = pickRandomItems(PART4_SETS, 1)[0];
+      const p5Topic = pickRandomItems(PART5_POOL, 1)[0];
+
+      const renderPart2PhotoHtml = (photoItem) => {
+        const placeholderUrl = `https://placehold.co/960x540/1e293b/f8fafc?text=${encodeURIComponent(photoItem.sceneTitle)}`;
+        return `
+          <div class="overflow-hidden rounded-xl border border-slate-300 bg-slate-900 shadow-sm">
+            <img
+              src="${photoItem.imageUrl}"
+              alt="${photoItem.sceneTitle}"
+              onerror="if(!this.dataset.triedFallback){this.dataset.triedFallback='1';this.src='${photoItem.fallbackUrl}';}else{this.src='${placeholderUrl}';}"
+              class="w-full max-h-[380px] object-cover mx-auto block"
+            />
+          </div>`;
+      };
+
+      const fullExam = [
+        {
+          id: "Q1", part: 1, partName: "Part 1 · 문장 읽기 (발음·억양과 강세)", prepSec: 45, respSec: 45,
+          criteriaLabel: "평가기준: 발음, 억양과 강세 (원문 변형 없이 그대로 읽기)",
+          referenceText: p1Picked[0].referenceText,
+          ttsText: "Question 1. Read the text aloud.",
+          ttsRepeat: 1,
+          instruction: "Read the text aloud.",
+          contentHtml: p1Picked[0].contentHtml
+        },
+        {
+          id: "Q2", part: 1, partName: "Part 1 · 문장 읽기 (발음·억양과 강세)", prepSec: 45, respSec: 45,
+          criteriaLabel: "평가기준: 발음, 억양과 강세 (원문 변형 없이 그대로 읽기)",
+          referenceText: p1Picked[1].referenceText,
+          ttsText: "Question 2. Read the text aloud.",
+          ttsRepeat: 1,
+          instruction: "Read the text aloud.",
+          contentHtml: p1Picked[1].contentHtml
+        },
+        {
+          id: "Q3", part: 2, partName: "Part 2 · 사진 묘사", prepSec: 45, respSec: 30,
+          criteriaLabel: "평가기준: 발음·억양과 강세 + 문법, 어휘, 일관성",
+          referenceText: p2Picked[0].referenceText,
+          ttsText: "Question 3. Describe the picture on your screen in as much detail as you can.",
+          ttsRepeat: 1,
+          instruction: "Describe the picture on your screen in as much detail as you can.",
+          contentHtml: renderPart2PhotoHtml(p2Picked[0])
+        },
+        {
+          id: "Q4", part: 2, partName: "Part 2 · 사진 묘사", prepSec: 45, respSec: 30,
+          criteriaLabel: "평가기준: 발음·억양과 강세 + 문법, 어휘, 일관성",
+          referenceText: p2Picked[1].referenceText,
+          ttsText: "Question 4. Describe the picture on your screen in as much detail as you can.",
+          ttsRepeat: 1,
+          instruction: "Describe the picture on your screen in as much detail as you can.",
+          contentHtml: renderPart2PhotoHtml(p2Picked[1])
+        },
+        {
+          id: "Q5", part: 3, partName: `Part 3 · 듣고, 질문에 답하기 (${p3Set.topic})`, prepSec: 3, respSec: 15,
+          criteriaLabel: "평가기준: 발음·억양·문법·어휘 + 내용의 일관성, 내용의 완성도",
+          ttsText: `${p3Set.situation} ${stripHtmlTags(p3Set.q5)}`,
+          ttsRepeat: 1,
+          instruction: p3Set.situation,
+          contentHtml: p3Set.q5
+        },
+        {
+          id: "Q6", part: 3, partName: `Part 3 · 듣고, 질문에 답하기 (${p3Set.topic})`, prepSec: 3, respSec: 15,
+          criteriaLabel: "평가기준: 발음·억양·문법·어휘 + 내용의 일관성, 내용의 완성도",
+          ttsText: stripHtmlTags(p3Set.q6),
+          ttsRepeat: 1,
+          instruction: p3Set.situation,
+          contentHtml: p3Set.q6
+        },
+        {
+          id: "Q7", part: 3, partName: `Part 3 · 듣고, 질문에 답하기 (${p3Set.topic})`, prepSec: 3, respSec: 30,
+          criteriaLabel: "평가기준: 발음·억양·문법·어휘 + 내용의 일관성, 내용의 완성도",
+          ttsText: stripHtmlTags(p3Set.q7),
+          ttsRepeat: 1,
+          instruction: p3Set.situation,
+          contentHtml: p3Set.q7
+        },
+        {
+          id: "Q8", part: 4, partName: "Part 4 · 제공된 정보를 사용하여 질문에 답하기", prepSec: 3, respSec: 15,
+          criteriaLabel: "평가기준: 발음·억양·문법·어휘·내용의 일관성 및 완성도 (모든 항목)",
+          ttsText: p4Set.q8,
+          ttsRepeat: 1,
+          instruction: "Answer the questions based on the information provided.",
+          contentHtml: `${p4Set.tableHtml}<p class="text-base font-semibold text-navy-900">${p4Set.q8}</p>`
+        },
+        {
+          id: "Q9", part: 4, partName: "Part 4 · 제공된 정보를 사용하여 질문에 답하기", prepSec: 3, respSec: 15,
+          criteriaLabel: "평가기준: 발음·억양·문법·어휘·내용의 일관성 및 완성도 (모든 항목)",
+          ttsText: p4Set.q9,
+          ttsRepeat: 1,
+          instruction: "Answer the questions based on the information provided.",
+          contentHtml: `${p4Set.tableHtml}<p class="text-base font-semibold text-navy-900">${p4Set.q9}</p>`
+        },
+        {
+          id: "Q10", part: 4, partName: "Part 4 · 제공된 정보를 사용하여 질문에 답하기", prepSec: 3, respSec: 30,
+          criteriaLabel: "평가기준: 발음·억양·문법·어휘·내용의 일관성 및 완성도 (모든 항목 / 질문 2회 제공)",
+          ttsText: p4Set.q10,
+          ttsRepeat: 2,
+          instruction: "Answer the questions based on the information provided. (Question 10 will be played twice.)",
+          contentHtml: `${p4Set.tableHtml}<p class="text-base font-semibold text-navy-900">${p4Set.q10}</p>`
+        },
+        {
+          id: "Q11", part: 5, partName: "Part 5 · 의견 제시하기", prepSec: 45, respSec: 60,
+          criteriaLabel: "평가기준: 발음·억양·문법·어휘·내용의 일관성 및 완성도 (모든 항목)",
+          ttsText: `Question 11. Do you agree or disagree with the following statement? ${p5Topic.replace(/"/g, '')} Use specific reasons and examples to support your opinion.`,
+          ttsRepeat: 1,
+          instruction: "Express your opinion on the topic below. Give specific reasons and examples to support your opinion.",
+          contentHtml: `
+            <p class="text-base sm:text-lg font-semibold text-navy-900 leading-relaxed">
+              Question 11: Do you agree or disagree with the following statement? <em class="text-navy-800 not-italic underline decoration-blue-300 decoration-2">${p5Topic}</em> Use specific reasons and examples to support your opinion.
+            </p>`
+        }
+      ];
+
+      return mode === 'mini'
+        ? fullExam.filter(q => ['Q1', 'Q7', 'Q11'].includes(q.id))
+        : fullExam;
+    }
+
+    function stripHtmlTags(html) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      return (tmp.textContent || tmp.innerText || '').replace(/Situation:.*?Question \d+:/i, 'Question:').trim();
+    }
+
+    // ==========================================
+    // 2. 상태 관리 및 브라우저 오디오 / STT / TTS 엔진
+    // ==========================================
+    let currentMode = 'mini';
+    let inputMode = 'voice'; // 'voice' (실제 음성 입력 · 실전 모드 통합) | 'text' (텍스트/음성자판 글 입력 모드)
+    let activeQuestions = [];
+    let currentIdx = 0;
+    let timerInterval = null;
+    let remainingSec = 0;
+    let totalPhaseSec = 0;
+    let phaseEndTime = 0;
+    let activePhaseToken = 0;
+
+    let recordedResponses = [];
+    let currentTranscript = "";
+    let finalTranscriptStore = "";
+    let recognition = null;
+    let isRecognizing = false;
+    let audioStream = null;
+    let activeAudioCtx = null;
+    let recStartTime = 0;
+    let lastSpeechTime = 0;
+    let pauseCountOver2Sec = 0;
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const GEMINI_KEY_STORAGE = 'ts_simulator_gemini_api_key';
+    const GOOGLE_CLIENT_ID_STORAGE = 'ts_simulator_google_oauth_client_id';
+    const DEFAULT_GOOGLE_CLIENT_ID = ''; // 배포자 고정 OAuth Client ID가 있다면 여기에 입력 가능
+
+    let googleAccessToken = '';
+    let googleTokenExpiresAt = 0;
+    let googleUserProfile = null;
+    let googleTokenClient = null;
+
+    function switchAiAuthTab(tab) {
+      const btnGoogle = document.getElementById('btn-auth-tab-google');
+      const btnApiKey = document.getElementById('btn-auth-tab-apikey');
+      const panelGoogle = document.getElementById('ai-auth-panel-google');
+      const panelApiKey = document.getElementById('ai-auth-panel-apikey');
+
+      if (tab === 'google') {
+        btnGoogle.className = "px-2.5 py-1 rounded-md bg-navy-800 text-white transition-colors cursor-pointer";
+        btnApiKey.className = "px-2.5 py-1 rounded-md text-slate-600 hover:text-navy-900 transition-colors cursor-pointer";
+        panelGoogle.classList.remove('hidden');
+        panelApiKey.classList.add('hidden');
+      } else {
+        btnApiKey.className = "px-2.5 py-1 rounded-md bg-navy-800 text-white transition-colors cursor-pointer";
+        btnGoogle.className = "px-2.5 py-1 rounded-md text-slate-600 hover:text-navy-900 transition-colors cursor-pointer";
+        panelApiKey.classList.remove('hidden');
+        panelGoogle.classList.add('hidden');
+      }
+    }
+
+    function toggleOAuthConfigBox() {
+      const box = document.getElementById('oauth-client-config-box');
+      if (box) box.classList.toggle('hidden');
+    }
+
+    function getActiveGoogleClientId() {
+      return (localStorage.getItem(GOOGLE_CLIENT_ID_STORAGE) || DEFAULT_GOOGLE_CLIENT_ID || '').trim();
+    }
+
+    function saveGoogleClientId() {
+      const val = (document.getElementById('google-oauth-client-id-input').value || '').trim();
+      if (!val) {
+        localStorage.removeItem(GOOGLE_CLIENT_ID_STORAGE);
+        showToast("OAuth 클라이언트 ID가 초기화되었습니다.");
+        return;
+      }
+      localStorage.setItem(GOOGLE_CLIENT_ID_STORAGE, val);
+      googleTokenClient = null;
+      document.getElementById('oauth-client-config-box').classList.add('hidden');
+      showToast("✅ OAuth 클라이언트 ID가 저장되었습니다. 이제 'Google 계정으로 로그인' 버튼을 눌러 연결하세요.");
+    }
+
+    function signInWithGoogleGemini() {
+      const clientId = getActiveGoogleClientId();
+      if (!clientId) {
+        document.getElementById('oauth-client-config-box').classList.remove('hidden');
+        showToast("⚠️ 먼저 '⚙️ OAuth 클라이언트 ID 설정'에 Google Cloud 웹 클라이언트 ID를 입력해 주세요.");
+        return;
+      }
+
+      if (!window.google || !google.accounts || !google.accounts.oauth2) {
+        showToast("⚠️ Google 로그인 스크립트를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+
+      try {
+        googleTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'openid email profile https://www.googleapis.com/auth/generative-language.retriever',
+          callback: async (tokenResponse) => {
+            if (tokenResponse.error) {
+              showToast(`⚠️ Google 로그인 취소 또는 오류: ${tokenResponse.error}`);
+              return;
+            }
+            googleAccessToken = tokenResponse.access_token;
+            googleTokenExpiresAt = Date.now() + ((Number(tokenResponse.expires_in) || 3500) * 1000);
+
+            try {
+              const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${googleAccessToken}` }
+              });
+              if (userRes.ok) {
+                googleUserProfile = await userRes.json();
+              }
+            } catch (e) {}
+
+            initGeminiKeyUI();
+            showToast(`✅ ${googleUserProfile?.email || 'Google 계정'}이 연결되었습니다. 이제 본인의 Gemini AI가 채점을 수행합니다.`);
+          }
+        });
+        googleTokenClient.requestAccessToken({ prompt: 'consent' });
+      } catch (e) {
+        showToast(`⚠️ Google 로그인 초기화 오류: ${e.message}`);
+      }
+    }
+
+    function signOutGoogleGemini() {
+      if (googleAccessToken && window.google?.accounts?.oauth2) {
+        try { google.accounts.oauth2.revoke(googleAccessToken); } catch (e) {}
+      }
+      googleAccessToken = '';
+      googleTokenExpiresAt = 0;
+      googleUserProfile = null;
+      initGeminiKeyUI();
+      showToast("Google 계정 연결이 해제되었습니다.");
+    }
+
+    // 저장된 Gemini 인증(구글 OAuth 로그인 또는 API 키) 불러오기 및 상태 표시
+    function initGeminiKeyUI() {
+      const savedKey = localStorage.getItem(GEMINI_KEY_STORAGE) || '';
+      const savedClientId = getActiveGoogleClientId();
+      const inputEl = document.getElementById('gemini-api-key-input');
+      const clientInputEl = document.getElementById('google-oauth-client-id-input');
+      const originHintEl = document.getElementById('current-origin-hint');
+      const badgeEl = document.getElementById('ai-engine-badge');
+      const clearBtn = document.getElementById('btn-clear-api-key');
+
+      const connectedBar = document.getElementById('google-user-connected-bar');
+      const loginBox = document.getElementById('google-user-login-box');
+
+      if (originHintEl) originHintEl.textContent = window.location.origin;
+      if (clientInputEl && savedClientId) clientInputEl.value = savedClientId;
+      if (inputEl) inputEl.value = savedKey;
+      if (clearBtn) {
+        if (savedKey) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+      }
+
+      const hasValidGoogleToken = Boolean(googleAccessToken && Date.now() < googleTokenExpiresAt);
+
+      if (hasValidGoogleToken) {
+        if (connectedBar) connectedBar.classList.remove('hidden');
+        if (loginBox) loginBox.classList.add('hidden');
+
+        const nameEl = document.getElementById('google-user-name');
+        const emailEl = document.getElementById('google-user-email');
+        const avatarEl = document.getElementById('google-user-avatar');
+        const initialEl = document.getElementById('google-user-initial');
+
+        if (nameEl) nameEl.textContent = googleUserProfile?.name || 'Google 계정 연결됨';
+        if (emailEl) emailEl.textContent = googleUserProfile?.email || 'Gemini AI OAuth 인증 활성';
+        if (googleUserProfile?.picture && avatarEl && initialEl) {
+          avatarEl.src = googleUserProfile.picture;
+          avatarEl.classList.remove('hidden');
+          initialEl.classList.add('hidden');
+        }
+
+        if (badgeEl) {
+          badgeEl.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-600 text-white";
+          badgeEl.textContent = `✨ Google 계정 연결됨 (${googleUserProfile?.email?.split('@')[0] || 'AI 활성'})`;
+        }
+      } else {
+        if (connectedBar) connectedBar.classList.add('hidden');
+        if (loginBox) loginBox.classList.remove('hidden');
+
+        if (savedKey) {
+          if (badgeEl) {
+            badgeEl.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-600 text-white";
+            badgeEl.textContent = "✨ Gemini API 키 연결됨";
+          }
+        } else {
+          if (badgeEl) {
+            badgeEl.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-700";
+            badgeEl.textContent = "기본 분석 모드 (미연결)";
+          }
+        }
+      }
+    }
+
+    function saveGeminiApiKey() {
+      const val = (document.getElementById('gemini-api-key-input').value || '').trim();
+      if (!val) {
+        showToast("저장할 Gemini API 키를 입력해 주세요.");
+        return;
+      }
+      localStorage.setItem(GEMINI_KEY_STORAGE, val);
+      initGeminiKeyUI();
+      showToast("✅ Gemini API 키가 브라우저에 저장되었습니다. 시험 종료 시 실제 AI 채점관이 정밀 채점을 수행합니다.");
+    }
+
+    function clearGeminiApiKey() {
+      localStorage.removeItem(GEMINI_KEY_STORAGE);
+      initGeminiKeyUI();
+      showToast("저장된 Gemini API 키가 삭제되었습니다.");
+    }
+
+    window.addEventListener('DOMContentLoaded', initGeminiKeyUI);
+
+    // 모바일(iOS Safari / Android Chrome) 오디오 및 TTS 자동재생 잠금 해제
+    function unlockMobileAudio() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          if (ctx.state === 'suspended') ctx.resume();
+          const buffer = ctx.createBuffer(1, 1, 22050);
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(ctx.destination);
+          source.start(0);
+          setTimeout(() => { try { ctx.close(); } catch (e) {} }, 100);
+        }
+      } catch (e) {}
+
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.getVoices();
+          const silentUtter = new SpeechSynthesisUtterance('');
+          silentUtter.volume = 0;
+          window.speechSynthesis.speak(silentUtter);
+        } catch (e) {}
+      }
+    }
+
+    function setInputMode(mode) {
+      inputMode = mode;
+      const btnVoice = document.getElementById('btn-env-voice');
+      const btnText = document.getElementById('btn-env-text');
+      const badge = document.getElementById('env-mode-badge');
+      const detailBox = document.getElementById('env-mode-detail-box');
+
+      if (mode === 'voice') {
+        btnVoice.className = "px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold bg-navy-900 text-white shadow-sm transition-all cursor-pointer touch-manipulation";
+        btnText.className = "px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-navy-900 transition-all cursor-pointer touch-manipulation";
+        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-navy-800 text-white";
+        badge.textContent = "실제 음성 입력 모드";
+        detailBox.innerHTML = `
+          <div class="font-bold text-navy-900 mb-1">🎙️ 실제 음성 입력 모드 (실전 CBT 환경 통합)</div>
+          <p class="text-slate-600">
+            실제 토익 스피킹 시험과 동일하게 마이크에 대고 직접 영어로 말하여 응시합니다. 시험 중에는 실시간 자막이 표시되지 않으며, 종료 후 성적표에서 내 발화 내용과 문법·점수를 확인할 수 있습니다. <span class="text-blue-700 font-medium">(PC Chrome · 모바일 Safari/Chrome 기본 브라우저 권장)</span>
+          </p>
+        `;
+      } else {
+        btnText.className = "px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold bg-navy-900 text-white shadow-sm transition-all cursor-pointer touch-manipulation";
+        btnVoice.className = "px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-navy-900 transition-all cursor-pointer touch-manipulation";
+        badge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-700 text-white";
+        badge.textContent = "텍스트 입력 모드";
+        detailBox.innerHTML = `
+          <div class="font-bold text-navy-900 mb-1">⌨️ 텍스트 입력 모드 (키보드 · 기기 음성 받아쓰기 지원)</div>
+          <p class="text-slate-600">
+            마이크 연결 없이 답변 시간 동안 영어 문장을 직접 글로 입력해 응시합니다. 소리 내어 말하기 어려운 장소에서도 키보드 타이핑이나 자판 내장 음성 받아쓰기로 간편하게 채점받을 수 있습니다. <span class="text-emerald-700 font-medium">(PC · 모바일 모든 환경 지원)</span>
+          </p>
+        `;
+      }
+    }
+
+    function applyInputModeVisibility() {
+      const voiceBox = document.getElementById('voice-mode-status-box');
+      const textWrap = document.getElementById('text-mode-input-wrap');
+      const envPill = document.getElementById('cbt-env-pill');
+
+      if (inputMode === 'voice') {
+        voiceBox.classList.remove('hidden');
+        textWrap.classList.add('hidden');
+        envPill.className = "text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-navy-900 text-white";
+        envPill.textContent = "실제 음성 입력";
+      } else {
+        voiceBox.classList.add('hidden');
+        textWrap.classList.remove('hidden');
+        envPill.className = "text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800";
+        envPill.textContent = "텍스트 입력 모드";
+      }
+    }
+
+    function stopSpeechSynthesis() {
+      if ('speechSynthesis' in window) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
+    }
+
+    function speakQuestionPrompt(text, repeatCount = 1, onComplete = null) {
+      stopSpeechSynthesis();
+      const tokenAtStart = activePhaseToken;
+      let completed = false;
+
+      const safeComplete = () => {
+        if (completed || tokenAtStart !== activePhaseToken) return;
+        completed = true;
+        if (onComplete) onComplete();
+      };
+
+      if (!('speechSynthesis' in window) || !text) {
+        safeComplete();
+        return;
+      }
+
+      let currentPlay = 0;
+      const playNext = () => {
+        if (tokenAtStart !== activePhaseToken || document.getElementById('view-test').classList.contains('hidden')) return;
+        currentPlay++;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.96;
+        utterance.pitch = 1.0;
+
+        const voices = window.speechSynthesis.getVoices();
+        const enVoice = voices.find(v => v.lang === 'en-US' && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha')))
+                     || voices.find(v => v.lang.startsWith('en-'));
+        if (enVoice) utterance.voice = enVoice;
+
+        utterance.onend = () => {
+          if (tokenAtStart !== activePhaseToken) return;
+          if (currentPlay < repeatCount) {
+            setTimeout(() => {
+              if (tokenAtStart === activePhaseToken) playNext();
+            }, 600);
+          } else {
+            safeComplete();
+          }
+        };
+        utterance.onerror = () => {
+          if (tokenAtStart === activePhaseToken) {
+            safeComplete();
+          }
+        };
+        window.speechSynthesis.speak(utterance);
+      };
+
+      playNext();
+    }
+
+    function replayQuestionAudio() {
+      const q = activeQuestions[currentIdx];
+      if (!q) return;
+      stopSpeechSynthesis();
+      if ('speechSynthesis' in window && q.ttsText) {
+        const utterance = new SpeechSynthesisUtterance(q.ttsText);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.96;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function showToast(msg) {
+      const box = document.getElementById('toast-box');
+      document.getElementById('toast-message').textContent = msg;
+      box.classList.remove('hidden');
+    }
+
+    function hideToast() {
+      document.getElementById('toast-box').classList.add('hidden');
+    }
+
+    function stopAllAudioResources() {
+      stopSpeechSynthesis();
+      isRecognizing = false;
+      if (recognition) {
+        try { recognition.abort(); } catch (e) {}
+        recognition = null;
+      }
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        audioStream = null;
+      }
+      if (activeAudioCtx && activeAudioCtx.state !== 'closed') {
+        try { activeAudioCtx.close(); } catch (e) {}
+        activeAudioCtx = null;
+      }
+    }
+
+    function showView(viewId) {
+      activePhaseToken++;
+      clearInterval(timerInterval);
+      timerInterval = null;
+      if (viewId === 'view-landing' || viewId === 'view-loading' || viewId === 'view-result') {
+        stopAllAudioResources();
+      }
+      ['view-landing', 'view-mic', 'view-text-prep', 'view-test', 'view-loading', 'view-result'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+      const targetEl = document.getElementById(viewId);
+      if (targetEl) targetEl.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 마이크 볼륨 시각화 공통 함수
+    async function attachMicVisualizer(barId, labelId, isViewActiveFn) {
+      try {
+        if (!audioStream || !audioStream.active) {
+          audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+          });
+        }
+        if (activeAudioCtx && activeAudioCtx.state !== 'closed') {
+          try { await activeAudioCtx.close(); } catch (e) {}
+        }
+        activeAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (activeAudioCtx.state === 'suspended') {
+          await activeAudioCtx.resume();
+        }
+        const analyser = activeAudioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        const source = activeAudioCtx.createMediaStreamSource(audioStream);
+        source.connect(analyser);
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        function updateMeter() {
+          if (!isViewActiveFn()) return;
+          analyser.getByteFrequencyData(dataArray);
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          const level = Math.min(100, Math.round(avg * 2.8));
+          const barEl = document.getElementById(barId);
+          const lblEl = document.getElementById(labelId);
+          if (barEl) barEl.style.width = level + '%';
+          if (lblEl) lblEl.textContent = level > 5 ? `음성 감지됨 (${level}%)` : '대기 중';
+          requestAnimationFrame(updateMeter);
+        }
+        updateMeter();
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function updateTextPrepStatus() {
+      const val = document.getElementById('text-prep-input').value.trim();
+      const words = val ? val.split(/\s+/).length : 0;
+      document.getElementById('text-prep-count').textContent = `${words} 단어 입력됨`;
+      const statusEl = document.getElementById('text-prep-status');
+      if (words > 0) {
+        statusEl.textContent = "✅ 입력이 정상적으로 인식되고 있습니다. 준비되셨으면 시험을 시작하세요.";
+        statusEl.className = "text-sm font-semibold text-emerald-700 mb-6";
+      } else {
+        statusEl.textContent = "입력창을 클릭해 타이핑 또는 음성 자판 입력이 정상 작동하는지 확인하세요.";
+        statusEl.className = "text-sm font-medium text-slate-600 mb-6";
+      }
+    }
+
+    // 마이크 권한 요청 및 실시간 볼륨 미터 작동
+    async function prepareTest(mode) {
+      unlockMobileAudio();
+      currentMode = mode;
+      hideToast();
+
+      if (inputMode === 'text') {
+        document.getElementById('text-prep-input').value = "";
+        updateTextPrepStatus();
+        showView('view-text-prep');
+        return;
+      }
+
+      showView('view-mic');
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        document.getElementById('mic-status').textContent = "⚠️ 현재 브라우저 환경에서는 마이크 API를 사용할 수 없습니다. Safari/Chrome 기본 브라우저로 열어주세요.";
+        document.getElementById('mic-status').className = "text-sm font-semibold text-rose-600 mb-6";
+        return;
+      }
+
+      const ok = await attachMicVisualizer(
+        'mic-bar',
+        'mic-db-label',
+        () => !document.getElementById('view-mic').classList.contains('hidden')
+      );
+
+      if (ok) {
+        document.getElementById('mic-status').textContent = "✅ 마이크가 정상적으로 연결되었습니다. 영어로 문장을 읽어보세요.";
+        document.getElementById('mic-status').className = "text-sm font-semibold text-emerald-700 mb-6";
+      } else {
+        document.getElementById('mic-status').textContent = "⚠️ 마이크 권한이 차단되었거나 장치를 찾을 수 없습니다. 브라우저 주소창의 마이크 권한을 허용해 주세요.";
+        document.getElementById('mic-status').className = "text-sm font-semibold text-rose-600 mb-6";
+        showToast("브라우저 상단 주소창의 마이크 권한을 '허용'으로 변경한 뒤 다시 시도해 주세요. (모바일은 Safari 또는 Chrome 기본 브라우저 권장)");
+      }
+    }
+
+    // 답변 시작 비프음 생성 (Web Audio API)
+    function playBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.18);
+      } catch (e) {}
+    }
+
+    function startTestSession() {
+      unlockMobileAudio();
+      hideToast();
+      stopAllAudioResources();
+
+      // 매 회차마다 랜덤 문제 풀에서 새로운 문항 세트 생성
+      activeQuestions = buildRandomExamSet(currentMode);
+      currentIdx = 0;
+      recordedResponses = [];
+      showView('view-test');
+      loadQuestion(0);
+    }
+
+    function loadQuestion(idx) {
+      activePhaseToken++;
+      clearInterval(timerInterval);
+      timerInterval = null;
+      stopSpeechSynthesis();
+      isRecognizing = false;
+      if (recognition) {
+        try { recognition.abort(); } catch (e) {}
+      }
+      const q = activeQuestions[idx];
+      applyInputModeVisibility();
+      document.getElementById('cbt-part-badge').textContent = q.partName;
+      document.getElementById('cbt-mode-label').textContent = currentMode === 'mini' ? 'Mini Test (3문항 · 랜덤)' : 'Full Test (11문항 · 랜덤)';
+      document.getElementById('cbt-progress-text').textContent = `Question ${idx + 1} of ${activeQuestions.length}`;
+      document.getElementById('cbt-question-area').innerHTML = `
+        <p class="text-xs sm:text-sm font-semibold text-slate-500 mb-3">${q.instruction}</p>
+        ${q.contentHtml}
+      `;
+
+      const phaseLabel = document.getElementById('timer-phase-label');
+      phaseLabel.textContent = q.ttsRepeat > 1 ? "🔊 문제 음성 안내 중 (10번 문항 2회 제공)..." : "🔊 문제 음성 안내 중...";
+      phaseLabel.className = "text-sm sm:text-base font-bold text-blue-700 mb-1";
+      document.getElementById('timer-seconds').textContent = formatSeconds(q.prepSec);
+      document.getElementById('timer-progress-bar').style.width = "100%";
+      document.getElementById('btn-skip-prep').classList.remove('hidden');
+      document.getElementById('btn-next-q').classList.add('hidden');
+
+      const tokenForQuestion = activePhaseToken;
+      speakQuestionPrompt(q.ttsText, q.ttsRepeat || 1, () => {
+        if (tokenForQuestion === activePhaseToken && !document.getElementById('view-test').classList.contains('hidden')) {
+          startPreparationPhase(q.prepSec);
+        }
+      });
+    }
+
+    function formatSeconds(sec) {
+      const mins = String(Math.floor(sec / 60)).padStart(2, '0');
+      const secs = String(sec % 60).padStart(2, '0');
+      return `${mins}:${secs}`;
+    }
+
+    function startPreparationPhase(sec) {
+      activePhaseToken++;
+      const currentToken = activePhaseToken;
+      clearInterval(timerInterval);
+      timerInterval = null;
+
+      remainingSec = sec;
+      totalPhaseSec = sec;
+      phaseEndTime = Date.now() + sec * 1000;
+
+      const phaseLabel = document.getElementById('timer-phase-label');
+      phaseLabel.textContent = "⏳ 준비 시간 (Preparation Time)";
+      phaseLabel.className = "text-sm sm:text-base font-bold text-amber-600 mb-1";
+
+      document.getElementById('timer-progress-bar').className = "h-full w-full bg-amber-500 transition-all duration-300 ease-linear";
+      document.getElementById('btn-skip-prep').classList.remove('hidden');
+      document.getElementById('btn-next-q').classList.add('hidden');
+      document.getElementById('rec-meter-wrap').classList.add('hidden');
+      document.getElementById('stt-fallback-wrap').classList.add('hidden');
+
+      const manualInput = document.getElementById('manual-stt-input');
+      manualInput.value = "";
+      if (inputMode === 'text') {
+        manualInput.disabled = true;
+        document.getElementById('text-mode-hint').textContent = "⏳ 준비 시간 종료 후 입력창이 열립니다";
+      }
+      updateTimerUI();
+
+      timerInterval = setInterval(() => {
+        if (currentToken !== activePhaseToken) {
+          clearInterval(timerInterval);
+          return;
+        }
+        remainingSec = Math.max(0, Math.ceil((phaseEndTime - Date.now()) / 1000));
+        updateTimerUI();
+        if (remainingSec <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          startResponsePhase();
+        }
+      }, 250);
+    }
+
+    function skipPreparation() {
+      activePhaseToken++;
+      clearInterval(timerInterval);
+      timerInterval = null;
+      stopSpeechSynthesis();
+      startResponsePhase();
+    }
+
+    function startResponsePhase() {
+      activePhaseToken++;
+      const currentToken = activePhaseToken;
+      clearInterval(timerInterval);
+      timerInterval = null;
+
+      const q = activeQuestions[currentIdx];
+      remainingSec = q.respSec;
+      totalPhaseSec = q.respSec;
+      phaseEndTime = Date.now() + q.respSec * 1000;
+      playBeep();
+
+      const phaseLabel = document.getElementById('timer-phase-label');
+      document.getElementById('btn-skip-prep').classList.add('hidden');
+      document.getElementById('btn-next-q').classList.remove('hidden');
+
+      if (inputMode === 'voice') {
+        phaseLabel.textContent = "🔴 답변 녹음 중 (Response Time)";
+        phaseLabel.className = "text-sm sm:text-base font-bold text-rose-600 mb-1";
+        document.getElementById('timer-progress-bar').className = "h-full w-full bg-rose-600 transition-all duration-300 ease-linear";
+        document.getElementById('rec-meter-wrap').classList.remove('hidden');
+        document.getElementById('btn-next-q').textContent = "답변 완료 · 다음 문항으로 →";
+
+        attachMicVisualizer(
+          'rec-mic-bar',
+          'rec-mic-status',
+          () => isRecognizing && !document.getElementById('view-test').classList.contains('hidden')
+        );
+        startSpeechRecognition();
+      } else {
+        recStartTime = Date.now();
+        phaseLabel.textContent = "⌨️ 답변 입력 중 (작성 완료 후 직접 제출)";
+        phaseLabel.className = "text-sm sm:text-base font-bold text-emerald-700 mb-1";
+        document.getElementById('timer-progress-bar').className = "h-full w-full bg-emerald-600 transition-all duration-300 ease-linear";
+        document.getElementById('rec-meter-wrap').classList.add('hidden');
+        document.getElementById('btn-next-q').textContent = "답변 제출 · 다음 문항으로 →";
+
+        const manualInput = document.getElementById('manual-stt-input');
+        manualInput.disabled = false;
+        manualInput.focus();
+        document.getElementById('text-mode-hint').textContent = "🟢 작성 완료 후 아래 제출 버튼을 눌러주세요";
+      }
+
+      updateTimerUI();
+
+      timerInterval = setInterval(() => {
+        if (currentToken !== activePhaseToken) {
+          clearInterval(timerInterval);
+          return;
+        }
+        remainingSec = Math.max(0, Math.ceil((phaseEndTime - Date.now()) / 1000));
+        updateTimerUI();
+        if (remainingSec <= 0) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+          if (inputMode === 'voice') {
+            finishCurrentQuestion(true);
+          } else {
+            phaseLabel.textContent = "⏰ 권장 답변 시간 종료 (계속 작성 후 직접 제출 가능)";
+            phaseLabel.className = "text-sm sm:text-base font-bold text-amber-700 mb-1";
+            document.getElementById('text-mode-hint').textContent = "✏️ 작성을 마치면 '답변 제출 · 다음 문항으로 →' 버튼을 눌러주세요";
+          }
+        }
+      }, 250);
+    }
+
+    function updateTimerUI() {
+      const mins = String(Math.floor(remainingSec / 60)).padStart(2, '0');
+      const secs = String(remainingSec % 60).padStart(2, '0');
+      document.getElementById('timer-seconds').textContent = `${mins}:${secs}`;
+      const pct = totalPhaseSec > 0 ? (remainingSec / totalPhaseSec) * 100 : 0;
+      document.getElementById('timer-progress-bar').style.width = `${pct}%`;
+    }
+
+    function showSttFallback(reasonText) {
+      const wrap = document.getElementById('stt-fallback-wrap');
+      const guide = document.getElementById('stt-error-guide');
+      const textWrap = document.getElementById('text-mode-input-wrap');
+      const manualInput = document.getElementById('manual-stt-input');
+
+      guide.textContent = reasonText;
+      wrap.classList.remove('hidden');
+
+      textWrap.classList.remove('hidden');
+      manualInput.disabled = false;
+      document.getElementById('text-mode-hint').textContent = "⚠️ 음성 인식 차단으로 글 입력창이 활성화되었습니다";
+    }
+
+    function startSpeechRecognition() {
+      currentTranscript = "";
+      finalTranscriptStore = "";
+      recStartTime = Date.now();
+      lastSpeechTime = recStartTime;
+      pauseCountOver2Sec = 0;
+      isRecognizing = true;
+
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        showSttFallback("현재 브라우저는 실시간 음성 인식을 지원하지 않습니다. 아래 입력창에 영어 답변을 입력해 응시를 이어가실 수 있습니다.");
+        return;
+      }
+
+      function initAndStartRecognizer() {
+        if (!isRecognizing) return;
+
+        recognition = new SpeechRec();
+        recognition.lang = 'en-US';
+        recognition.continuous = !isMobileDevice;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event) => {
+          const now = Date.now();
+          if ((now - lastSpeechTime) / 1000 >= 2.0) {
+            pauseCountOver2Sec++;
+          }
+          lastSpeechTime = now;
+
+          let interimStr = "";
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcriptPart = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscriptStore += transcriptPart.trim() + " ";
+            } else {
+              interimStr += transcriptPart;
+            }
+          }
+          currentTranscript = (finalTranscriptStore + interimStr).trim();
+        };
+
+        recognition.onerror = (event) => {
+          if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+            isRecognizing = false;
+            showSttFallback("마이크 또는 음성 인식 권한이 차단되었습니다. 브라우저 주소창에서 마이크 권한을 허용하시거나 아래 입력창을 이용해 주세요.");
+          } else if (event.error === 'network') {
+            showSttFallback("네트워크 오류로 음성 인식이 중단되었습니다. 아래 입력창을 대신 사용하실 수 있습니다.");
+          }
+        };
+
+        recognition.onend = () => {
+          if (isRecognizing && remainingSec > 1) {
+            try {
+              setTimeout(() => {
+                if (isRecognizing) initAndStartRecognizer();
+              }, isMobileDevice ? 220 : 150);
+            } catch (e) {}
+          }
+        };
+
+        try {
+          recognition.start();
+        } catch (e) {
+          showSttFallback("음성 인식 엔진 시작 중 예외가 발생했습니다. 아래 입력창을 통해 테스트를 이어갈 수 있습니다.");
+        }
+      }
+
+      initAndStartRecognizer();
+    }
+
+    function finishCurrentQuestion(cutoff = false) {
+      activePhaseToken++;
+      clearInterval(timerInterval);
+      timerInterval = null;
+      isRecognizing = false;
+      if (recognition) {
+        try { recognition.stop(); } catch (e) {}
+      }
+
+      const manualText = document.getElementById('manual-stt-input').value.trim();
+      const finalSpokenText = manualText || currentTranscript.trim();
+
+      const q = activeQuestions[currentIdx];
+      const durationSec = Math.max(1, (Date.now() - recStartTime) / 1000);
+      const words = finalSpokenText ? finalSpokenText.split(/\s+/).length : 0;
+      const wpm = Math.round((words / durationSec) * 60);
+
+      recordedResponses.push({
+        question_id: q.id,
+        part: q.part,
+        criteria_label: q.criteriaLabel || "",
+        reference_text: q.referenceText || "",
+        stt_transcript: finalSpokenText,
+        audio_metadata: {
+          duration_sec: Number(durationSec.toFixed(1)),
+          speech_rate_wpm: wpm,
+          pause_count_over_2sec: pauseCountOver2Sec,
+          cutoff_at_end: cutoff
+        }
+      });
+
+      if (currentIdx + 1 < activeQuestions.length) {
+        currentIdx++;
+        loadQuestion(currentIdx);
+      } else {
+        submitAllForGrading();
+      }
+    }
+
+    function submitAllForGrading() {
+      stopAllAudioResources();
+      showView('view-loading');
+
+      const hasValidGoogleToken = Boolean(googleAccessToken && Date.now() < googleTokenExpiresAt);
+      const apiKey = (localStorage.getItem(GEMINI_KEY_STORAGE) || '').trim();
+
+      if (hasValidGoogleToken || apiKey) {
+        evaluateWithGeminiAI({ accessToken: hasValidGoogleToken ? googleAccessToken : '', apiKey }, currentMode, recordedResponses)
+          .then(aiResult => {
+            renderResultReport(aiResult);
+          })
+          .catch(err => {
+            showToast(`⚠️ Gemini AI 채점 호출 중 오류가 발생하여 기본 분석 결과로 대체합니다. (${err.message})`);
+            const fallbackResult = runLocalEvaluation(currentMode, recordedResponses);
+            renderResultReport(fallbackResult);
+          });
+      } else {
+        setTimeout(() => {
+          const result = runLocalEvaluation(currentMode, recordedResponses);
+          renderResultReport(result);
+        }, 900);
+      }
+    }
+
+    // ==========================================
+    // Gemini API 직접 호출 정밀 채점 엔진 (Google OAuth 토큰 또는 API 키 지원)
+    // ==========================================
+    async function evaluateWithGeminiAI(authConfig, testMode, responses) {
+      const systemPrompt = `
+당신은 ETS 공식 채점 기준에 정통한 TOEIC Speaking 전문 채점관입니다.
+제공된 문항별 응답 데이터(stt_transcript, reference_text, audio_metadata)를 분석하여 엄격하게 채점하고 반드시 지정된 JSON 스키마로만 응답하십시오.
+
+[공식 파트별 평가기준 및 채점 규칙]
+1. Part 1 (Q1~Q2, 0~3점):
+   - 평가기준: 발음, 억양과 강세.
+   - 반드시 문장 변형이나 패러프레이징 없이 제공된 원문(reference_text) 그대로 읽었는지(단어 일치율, 누락·변형 여부)를 최우선으로 채점하십시오.
+   - Part 1에서는 grammar_issues를 빈 배열([])로 두고, grammar_correction.corrected에 reference_text 원문 전체를 그대로 넣으며, paraphrasing_tip은 null로 반환하십시오.
+2. Part 2 (Q3~Q4, 0~3점):
+   - 평가기준: 발음·억양과 강세 + 문법, 어휘, 일관성. (reference_text의 사진 상황과 일치하는지 확인)
+3. Part 3 (Q5~Q7, 0~3점):
+   - 평가기준: 발음·억양·강세·문법·어휘 + 내용의 일관성, 내용의 완성도.
+4. Part 4 (Q8~Q10, 0~3점) & Part 5 (Q11, 0~5점):
+   - 평가기준: 발음·억양·강세·문법·어휘·내용의 일관성 및 완성도 (모든 항목 종합 평가).
+5. Part 2~5에서는 사용자 발화(stt_transcript)에서 문법적으로 틀렸거나 콩글리시·어색한 표현이 있다면 모두 찾아 grammar_issues 배열에 담아주십시오.
+6. audio_metadata의 speech_rate_wpm(적정 100~160), pause_count_over_2sec, cutoff_at_end(시간 초과 끊김 여부)를 전달력 및 완성도 점수에 반영하십시오.
+7. 발화 텍스트가 비어 있는 문항은 0~1점을 부여하고 마이크/입력 안내를 피드백에 포함하십시오.
+8. 피드백(strengths, weaknesses, reason, overall_comment)은 자연스러운 한국어로 작성하고, 교정 문장과 모범 답안은 원어민 수준의 자연스러운 영어로 작성하십시오.`;
+
+      const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+      const apiUrl = authConfig.accessToken
+        ? baseUrl
+        : `${baseUrl}?key=${encodeURIComponent(authConfig.apiKey)}`;
+
+      const headers = { 'Content-Type': 'application/json' };
+      if (authConfig.accessToken) {
+        headers['Authorization'] = `Bearer ${authConfig.accessToken}`;
+      }
+
+      const payload = {
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: JSON.stringify(responses) }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.15,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              question_results: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    question_id: { type: "STRING" },
+                    part: { type: "INTEGER" },
+                    score: { type: "INTEGER" },
+                    max_score: { type: "INTEGER" },
+                    strengths: { type: "ARRAY", items: { type: "STRING" } },
+                    weaknesses: { type: "ARRAY", items: { type: "STRING" } },
+                    grammar_issues: {
+                      type: "ARRAY",
+                      items: {
+                        type: "OBJECT",
+                        properties: {
+                          wrong: { type: "STRING" },
+                          right: { type: "STRING" },
+                          reason: { type: "STRING" }
+                        },
+                        required: ["wrong", "right", "reason"]
+                      }
+                    },
+                    grammar_correction: {
+                      type: "OBJECT",
+                      properties: {
+                        original: { type: "STRING" },
+                        corrected: { type: "STRING" }
+                      },
+                      required: ["original", "corrected"]
+                    },
+                    paraphrasing_tip: {
+                      type: "OBJECT",
+                      nullable: true,
+                      properties: {
+                        basic: { type: "STRING" },
+                        advanced: { type: "STRING" }
+                      }
+                    },
+                    model_answer: { type: "STRING" }
+                  },
+                  required: ["question_id", "part", "score", "max_score", "strengths", "weaknesses", "grammar_issues", "grammar_correction", "model_answer"]
+                }
+              },
+              overall_comment: { type: "STRING" }
+            },
+            required: ["question_results", "overall_comment"]
+          }
+        }
+      };
+
+      // 지수 백오프 재시도(최대 3회)
+      let response = null;
+      let lastErr = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(payload)
+          });
+          if (response.ok) break;
+          const errBody = await response.json().catch(() => ({}));
+          lastErr = new Error(errBody?.error?.message || `HTTP ${response.status}`);
+          if (response.status === 400 || response.status === 401 || response.status === 403) break;
+        } catch (e) {
+          lastErr = e;
+        }
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+      }
+
+      if (!response || !response.ok) {
+        throw lastErr || new Error("Gemini API 연결 실패");
+      }
+
+      const data = await response.json();
+      const rawJsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawJsonText) {
+        throw new Error("AI 응답 데이터가 비어 있습니다.");
+      }
+
+      const parsed = JSON.parse(rawJsonText);
+
+      // 프론트엔드 성적표 렌더링 포맷으로 매핑 및 오류 하이라이트 적용
+      const enrichedResults = parsed.question_results.map((item, idx) => {
+        const orig = responses[idx] || {};
+        const isPart1 = Number(item.part) === 1;
+        const acc = isPart1 ? comparePart1Accuracy(orig.reference_text || "", orig.stt_transcript || "") : null;
+
+        let highlightedHtml = orig.stt_transcript || "(음성 인식된 텍스트 없음)";
+        if (!isPart1 && orig.stt_transcript && Array.isArray(item.grammar_issues)) {
+          item.grammar_issues.forEach(issue => {
+            if (issue && issue.wrong) {
+              const escaped = String(issue.wrong).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              highlightedHtml = highlightedHtml.replace(
+                new RegExp(escaped, 'gi'),
+                `<mark class="bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded underline decoration-rose-400 decoration-wavy">${issue.wrong}</mark>`
+              );
+            }
+          });
+        }
+
+        return {
+          ...item,
+          isPart1: isPart1,
+          criteria_label: orig.criteria_label || "",
+          wpm: orig.audio_metadata ? orig.audio_metadata.speech_rate_wpm : 0,
+          matchRate: acc ? acc.matchRate : null,
+          highlighted_original: highlightedHtml,
+          grammar_correction: {
+            original: orig.stt_transcript || item.grammar_correction?.original || "(음성 인식된 텍스트 없음)",
+            corrected: isPart1 ? (orig.reference_text || item.grammar_correction?.corrected || "") : (item.grammar_correction?.corrected || "")
+          }
+        };
+      });
+
+      let rawSum = 0;
+      let maxSum = 0;
+      enrichedResults.forEach(item => {
+        rawSum += Number(item.score || 0);
+        maxSum += Number(item.max_score || 3);
+      });
+
+      let ratio = maxSum > 0 ? rawSum / maxSum : 0;
+      if (testMode === 'mini' && enrichedResults.length === 3) {
+        const p1 = Number(enrichedResults[0].score || 0);
+        const p3 = Number(enrichedResults[1].score || 0);
+        const p5 = Number(enrichedResults[2].score || 0);
+        ratio = ((p1 * 1.0) + (p3 * 1.5) + (p5 * 1.5)) / 15.0;
+      }
+
+      let scaledScore = Math.round((ratio * 200) / 10) * 10;
+      scaledScore = Math.max(60, Math.min(200, scaledScore));
+      const gradeInfo = mapScoreToGrade(scaledScore);
+
+      return {
+        testMode: testMode,
+        isAiGraded: true,
+        scaledScore: scaledScore,
+        scoreRange: testMode === 'mini'
+          ? `${Math.max(40, scaledScore - 10)} ~ ${Math.min(200, scaledScore + 10)}점`
+          : `${scaledScore}점`,
+        grade: gradeInfo.grade,
+        gradeDesc: gradeInfo.desc,
+        questionResults: enrichedResults,
+        overallComment: parsed.overall_comment
+      };
+    }
+
+    function comparePart1Accuracy(referenceText, spokenText) {
+      const normalize = (str) => str.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/-/g, ' ').trim().split(/\s+/).filter(Boolean);
+      const refWords = normalize(referenceText);
+      const spokenWords = normalize(spokenText);
+
+      if (spokenWords.length === 0) {
+        return { matchRate: 0, missedWords: refWords.slice(0, 6), extraWords: [] };
+      }
+
+      const spokenSet = new Set(spokenWords);
+      const refSet = new Set(refWords);
+
+      let matchedCount = 0;
+      const missedWords = [];
+      refWords.forEach(w => {
+        if (spokenSet.has(w)) {
+          matchedCount++;
+        } else if (!missedWords.includes(w)) {
+          missedWords.push(w);
+        }
+      });
+
+      const extraWords = [];
+      spokenWords.forEach(w => {
+        if (!refSet.has(w) && !extraWords.includes(w)) {
+          extraWords.push(w);
+        }
+      });
+
+      const matchRate = Math.round((matchedCount / Math.max(1, refWords.length)) * 100);
+      return { matchRate, missedWords, extraWords };
+    }
+
+    function runLocalEvaluation(testMode, responses) {
+      const questionResults = responses.map(r => {
+        const text = r.stt_transcript.trim();
+        const wordCount = text ? text.split(/\s+/).length : 0;
+        const maxS = r.part === 5 ? 5 : 3;
+        const wpm = r.audio_metadata.speech_rate_wpm;
+
+        if (r.part === 1) {
+          const acc = comparePart1Accuracy(r.reference_text, text);
+          let score = 0;
+          if (wordCount === 0) {
+            score = 1;
+          } else if (acc.matchRate >= 90 && acc.extraWords.length <= 1 && wpm >= 95 && wpm <= 170) {
+            score = 3;
+          } else if (acc.matchRate >= 65) {
+            score = 2;
+          } else {
+            score = 1;
+          }
+
+          const missedPreview = acc.missedWords.length > 0
+            ? `누락·오독 감지 단어: ${acc.missedWords.slice(0, 6).join(', ')}`
+            : "원문의 모든 핵심 단어를 누락 없이 정확히 발화했습니다.";
+          const extraPreview = acc.extraWords.length > 0
+            ? ` (원문에 없는 변형/추가 발화: ${acc.extraWords.slice(0, 5).join(', ')})`
+            : "";
+
+          return {
+            question_id: r.question_id,
+            part: 1,
+            isPart1: true,
+            criteria_label: r.criteria_label,
+            score: score,
+            max_score: 3,
+            wpm: wpm,
+            matchRate: acc.matchRate,
+            strengths: [
+              wordCount > 0
+                ? `원문 지문 일치율 ${acc.matchRate}% (속도 ${wpm} WPM)로 지문을 읽었습니다. Part 1은 문장 변형 없이 원문 그대로 정확한 발음과 억양·강세로 읽는 것이 핵심입니다.`
+                : "음성 입력이 감지되지 않아 기본 시뮬레이션 리포트로 분석되었습니다. 실제 지문을 소리 내어 읽으면 원문 일치율이 계산됩니다."
+            ],
+            weaknesses: [
+              wordCount > 0
+                ? `${missedPreview}${extraPreview}. 고유명사와 문장 끝 억양(평서문 하강, 나열 구간 상승)에 유의하세요.`
+                : "마이크 허용 후 제시된 영어 지문을 단어 변형 없이 끝까지 읽어주세요."
+            ],
+            grammar_correction: {
+              original: text || "(음성 인식된 텍스트 없음)",
+              corrected: r.reference_text
+            },
+            paraphrasing_tip: null,
+            model_answer: "※ Part 1(문장 읽기)은 창의적 답변이나 패러프레이징이 아니라, 주어진 지문을 한 단어도 바꾸지 않고 정확한 발음·강세·끊어 읽기로 낭독하는 영역입니다."
+          };
+        }
+
+        let score = 0;
+        if (wordCount === 0) {
+          score = 1;
+        } else if (r.part === 5) {
+          if (wordCount >= 45 && wpm >= 95) score = 5;
+          else if (wordCount >= 30) score = 4;
+          else if (wordCount >= 15) score = 3;
+          else score = 2;
+        } else {
+          if (wordCount >= 22 && wpm >= 95) score = 3;
+          else if (wordCount >= 10) score = 2;
+          else score = 1;
+        }
+
+        const sampleCorrections = {
+          2: {
+            corrected: "This picture was taken in a modern setting where people are actively engaged in their activities.",
+            basic: "people are doing something",
+            advanced: "individuals are actively engaged in",
+            model: "This is a picture taken in a lively setting. In the foreground, the main subjects are focused on their tasks, while in the background, several details add context to the scene."
+          },
+          3: {
+            corrected: "I definitely believe this approach is helpful because it saves time and leads to better results.",
+            basic: "it is very good and helpful",
+            advanced: "this approach is highly beneficial and practical",
+            model: "Yes, I strongly believe this is very helpful. First, it allows people to make more informed decisions and save valuable time. For instance, based on my own experience, doing this helped me achieve much better outcomes."
+          },
+          4: {
+            corrected: "According to the schedule, the first event starts on time in the designated room, while the afternoon session has a schedule update.",
+            basic: "first is in the morning, second is changed",
+            advanced: "the morning schedule consists of two sessions, whereas the afternoon session has been...",
+            model: "Sure, let me provide the details from the schedule. The morning sessions take place as planned with specific times and locations, while there is an important update regarding the afternoon session that you should note."
+          },
+          5: {
+            corrected: "I strongly agree with this statement because it boosts overall efficiency and satisfaction.",
+            basic: "it saves time and helps work",
+            advanced: "it streamlines daily routines and enhances overall productivity",
+            model: "I strongly agree with this statement for two main reasons. First, it saves significant time and helps people maintain a healthier balance in their daily lives. Second, flexible and supportive environments often lead to higher motivation and better performance."
+          }
+        };
+
+        const ref = sampleCorrections[r.part] || sampleCorrections[3];
+        const grammarAnalysis = analyzeSpokenGrammar(text);
+
+        return {
+          question_id: r.question_id,
+          part: r.part,
+          isPart1: false,
+          criteria_label: r.criteria_label,
+          score: score,
+          max_score: maxS,
+          wpm: wpm,
+          strengths: [
+            wordCount > 0
+              ? `총 ${wordCount}단어(발화 속도 ${wpm} WPM)를 발화하여 질문 의도에 맞춰 응답을 구성했습니다.`
+              : "음성 입력이 감지되지 않아 기본 시뮬레이션 리포트로 분석되었습니다. 마이크 허용 후 실제 영어로 말씀하시면 발화 텍스트가 그대로 분석됩니다."
+          ],
+          weaknesses: [
+            r.audio_metadata.cutoff_at_end
+              ? "답변 제한 시간이 종료되면서 문장이 중간에 잘렸습니다. 종료 5초 전에는 결론 문장으로 마무리하는 연습이 필요합니다."
+              : "문장과 문장 사이를 연결하는 접속부사(Furthermore, For instance 등)를 추가하면 내용의 일관성과 완성도 점수를 더욱 높일 수 있습니다."
+          ],
+          grammar_issues: grammarAnalysis.issues,
+          highlighted_original: grammarAnalysis.highlightedHtml,
+          grammar_correction: {
+            original: text || "(음성 인식된 텍스트 없음)",
+            corrected: grammarAnalysis.autoCorrectedText || ref.corrected
+          },
+          paraphrasing_tip: {
+            basic: ref.basic,
+            advanced: ref.advanced
+          },
+          model_answer: ref.model
+        };
+      });
+
+      let rawSum = 0;
+      let maxSum = 0;
+      questionResults.forEach(item => {
+        rawSum += item.score;
+        maxSum += item.max_score;
+      });
+
+      let ratio = maxSum > 0 ? rawSum / maxSum : 0;
+      if (testMode === 'mini' && questionResults.length === 3) {
+        const p1 = questionResults[0].score;
+        const p3 = questionResults[1].score;
+        const p5 = questionResults[2].score;
+        ratio = ((p1 * 1.0) + (p3 * 1.5) + (p5 * 1.5)) / 15.0;
+      }
+
+      let scaledScore = Math.round((ratio * 200) / 10) * 10;
+      scaledScore = Math.max(60, Math.min(200, scaledScore));
+      const gradeInfo = mapScoreToGrade(scaledScore);
+
+      return {
+        testMode: testMode,
+        scaledScore: scaledScore,
+        scoreRange: testMode === 'mini'
+          ? `${Math.max(40, scaledScore - 10)} ~ ${Math.min(200, scaledScore + 10)}점`
+          : `${scaledScore}점`,
+        grade: gradeInfo.grade,
+        gradeDesc: gradeInfo.desc,
+        questionResults: questionResults,
+        overallComment: "전반적인 문장 전달력이 안정적입니다. Part 3와 Part 5에서 첫 문장에 핵심 결론을 먼저 제시하고 구체적인 개인 경험 예시를 한 문장씩만 보강하면 한 단계 높은 등급에 안정적으로 도달할 수 있습니다."
+      };
+    }
+
+    function mapScoreToGrade(score) {
+      if (score >= 200) return { grade: "AH (Advanced High)", desc: "원어민에 가까운 유창성과 논리력을 갖춘 최상위 등급입니다." };
+      if (score >= 180) return { grade: "AM (Advanced Mid)", desc: "복잡한 주제도 자연스럽고 정교하게 표현할 수 있는 수준입니다." };
+      if (score >= 160) return { grade: "AL (Advanced Low)", desc: "주요 대기업·공기업 최고 우대 등급으로, 의견 전개와 어휘력이 뛰어납니다." };
+      if (score >= 140) return { grade: "IH (Intermediate High)", desc: "일상 및 업무 상황을 무리 없이 설명하며, 연결어 보완 시 AL 도약이 가능합니다." };
+      if (score >= 130) return { grade: "IM3 (Intermediate Mid 3)", desc: "기본 의사소통이 안정적이나 구체적 예시와 복문 구사를 늘려야 합니다." };
+      if (score >= 120) return { grade: "IM2 (Intermediate Mid 2)", desc: "익숙한 주제는 문장으로 답할 수 있으나 휴지(Pause)를 줄이는 연습이 필요합니다." };
+      if (score >= 110) return { grade: "IM1 (Intermediate Mid 1)", desc: "단문 위주의 답변이 가능하며 핵심 템플릿 숙지가 권장됩니다." };
+      return { grade: "IL 이하", desc: "기초 문장 구조와 발음·억양 훈련부터 시작하는 것을 권장합니다." };
+    }
+
+    // 사용자 실제 발화에서 문법 오류 및 어색한 표현을 탐지·하이라이트하는 분석기
+    function analyzeSpokenGrammar(rawText) {
+      if (!rawText) {
+        return { issues: [], highlightedHtml: "(음성 인식된 텍스트 없음)", autoCorrectedText: "" };
+      }
+
+      const rules = [
+        {
+          regex: /\b(he|she|it|this|company|everyone|somebody)\s+(have|are|were|do|don't|go|need|want|make|help|save|boost)\b/gi,
+          fixFn: (m, subj, verb) => {
+            const map = { have: "has", are: "is", were: "was", do: "does", "don't": "doesn't", go: "goes", need: "needs", want: "wants", make: "makes", help: "helps", save: "saves", boost: "boosts" };
+            return `${subj} ${map[verb.toLowerCase()] || verb + 's'}`;
+          },
+          reason: "3인칭 단수 주어 뒤에는 단수 동사(has, is, does 또는 동사원형+s)를 사용해야 합니다."
+        },
+        {
+          regex: /\b(people|they|we|companies|employees|workers|students|friends)\s+(is|was|has|does|doesn't)\b/gi,
+          fixFn: (m, subj, verb) => {
+            const map = { is: "are", was: "were", has: "have", does: "do", "doesn't": "don't" };
+            return `${subj} ${map[verb.toLowerCase()] || verb}`;
+          },
+          reason: "복수 주어(people, companies 등)에는 복수 동사(are, have, do)를 일치시켜야 합니다."
+        },
+        {
+          regex: /\b(a|an)\s+([a-z]+s)\b/gi,
+          exclude: /\b(a|an)\s+(business|bus|class|glass|pass|grass|dress|press|stress|access|process|progress|success|focus|status|campus|series|species|news|always|sometimes|perhaps)\b/i,
+          fixFn: (m, art, noun) => `${art} ${noun.replace(/s$/i, '')}`,
+          reason: "부정관사(a/an) 뒤에는 단수 명사를 사용해야 합니다."
+        },
+        {
+          regex: /\b(many|several|various|different|some|two|three|four)\s+(person|child|man|woman|reason|benefit|advantage|problem|thing|employee|company|way|day|time|friend|movie|store)\b/gi,
+          fixFn: (m, quant, noun) => {
+            const irreg = { person: "people", child: "children", man: "men", woman: "women", company: "companies" };
+            const plural = irreg[noun.toLowerCase()] || (noun + "s");
+            return `${quant} ${plural}`;
+          },
+          reason: "복수를 나타내는 수량 표현 뒤에는 복수형 명사를 써야 자연스럽습니다."
+        },
+        {
+          regex: /\b(can|could|will|would|should|must|may|might)\s+to\s+([a-z]+)\b/gi,
+          fixFn: (m, modal, verb) => `${modal} ${verb}`,
+          reason: "조동사(can, should, will 등) 뒤에는 'to' 없이 동사원형이 바로 와야 합니다."
+        },
+        {
+          regex: /\b(go|went|going)\s+to\s+(home|there|here|abroad|downtown|online)\b/gi,
+          fixFn: (m, goVerb, adv) => `${goVerb} ${adv}`,
+          reason: "home, there, abroad, online 등은 장소 부사이므로 전치사 'to'를 붙이지 않습니다."
+        },
+        {
+          regex: /\b(discuss|mention|explain|enter|attend|marry|reach)\s+(about|to|at|into)\b/gi,
+          fixFn: (m, verb) => `${verb}`,
+          reason: "타동사(discuss, attend, mention 등)는 전치사(about, to, at) 없이 목적어를 바로 취합니다."
+        },
+        {
+          regex: /\b(yesterday|last\s+week|last\s+month|last\s+year|ago)\b([^.?!]*?)\b(go|come|see|buy|eat|meet|have|am|is|are)\b/gi,
+          fixFn: (m, timeExpr, mid, verb) => {
+            const past = { go: "went", come: "came", see: "saw", buy: "bought", eat: "ate", meet: "met", have: "had", am: "was", is: "was", are: "were" };
+            return `${timeExpr}${mid}${past[verb.toLowerCase()] || verb}`;
+          },
+          reason: "과거 시점 부사(yesterday, last ~, ago)와 함께 쓰일 때는 동사를 과거 시제로 일치시켜야 합니다."
+        },
+        {
+          regex: /\b(very\s+good|very\s+bad|very\s+important|very\s+helpful|very\s+nice)\b/gi,
+          fixFn: (m, expr) => {
+            const up = { "very good": "beneficial / effective", "very bad": "detrimental / inconvenient", "very important": "crucial / essential", "very helpful": "invaluable / practical", "very nice": "pleasant / appealing" };
+            return up[expr.toLowerCase()] || expr;
+          },
+          reason: "'very + 기초 형용사' 반복 대신 원어민이 선호하는 구체적 형용사를 사용하면 어휘 점수가 상승합니다."
+        },
+        {
+          regex: /\b(in\s+my\s+think|i\s+am\s+agree|i'm\s+agree|more\s+better|more\s+easier|more\s+cheaper|more\s+faster)\b/gi,
+          fixFn: (m, expr) => {
+            const map = {
+              "in my think": "in my opinion / I think",
+              "i am agree": "I agree",
+              "i'm agree": "I agree",
+              "more better": "much better",
+              "more easier": "much easier",
+              "more cheaper": "much cheaper",
+              "more faster": "much faster"
+            };
+            return map[expr.toLowerCase()] || expr;
+          },
+          reason: "한국인 수험생이 자주 범하는 비문(be+agree, 이중 비교급 등) 표현입니다."
+        }
+      ];
+
+      const issues = [];
+      let highlightedHtml = rawText;
+      let autoCorrectedText = rawText;
+
+      rules.forEach(rule => {
+        const matches = [...rawText.matchAll(rule.regex)];
+        matches.forEach(match => {
+          const originalPhrase = match[0];
+          if (rule.exclude && rule.exclude.test(originalPhrase)) return;
+          const fixedPhrase = rule.fixFn(...match);
+          if (originalPhrase.toLowerCase() !== fixedPhrase.toLowerCase()) {
+            const alreadyAdded = issues.some(it => it.wrong.toLowerCase() === originalPhrase.toLowerCase());
+            if (!alreadyAdded) {
+              issues.push({
+                wrong: originalPhrase,
+                right: fixedPhrase,
+                reason: rule.reason
+              });
+              const escaped = originalPhrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              highlightedHtml = highlightedHtml.replace(
+                new RegExp(escaped, 'gi'),
+                `<mark class="bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded underline decoration-rose-400 decoration-wavy">${originalPhrase}</mark>`
+              );
+              autoCorrectedText = autoCorrectedText.replace(new RegExp(escaped, 'gi'), fixedPhrase);
+            }
+          }
+        });
+      });
+
+      if (/^[a-z]/.test(rawText.trim())) {
+        autoCorrectedText = autoCorrectedText.charAt(0).toUpperCase() + autoCorrectedText.slice(1);
+      }
+
+      return {
+        issues,
+        highlightedHtml,
+        autoCorrectedText
+      };
+    }
+
+    function renderResultReport(data) {
+      showView('view-result');
+      const aiTag = data.isAiGraded ? ' · 🤖 Gemini AI 채점' : ' · 기본 분석 엔진';
+      document.getElementById('res-mode-badge').textContent =
+        (data.testMode === 'mini' ? '⚡ 미니테스트(3문항) 예상 진단 결과' : '🎯 실전 풀테스트(11문항) 정밀 성적표') + aiTag;
+      
+      document.getElementById('res-score-display').textContent = `예상 점수: ${data.scoreRange}`;
+      document.getElementById('res-grade-pill').textContent = `예상 등급: ${data.grade}`;
+      document.getElementById('res-grade-desc').textContent = data.gradeDesc;
+      document.getElementById('res-overall-comment').textContent = data.overallComment;
+
+      if (data.testMode === 'mini') {
+        document.getElementById('mini-upsell-box').classList.remove('hidden');
+      } else {
+        document.getElementById('mini-upsell-box').classList.add('hidden');
+      }
+
+      const container = document.getElementById('res-questions-container');
+      container.innerHTML = "";
+
+      data.questionResults.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'bg-white border border-slate-200 rounded-2xl p-6 shadow-sm';
+
+        const isPart1 = item.isPart1 || Number(item.part) === 1;
+        const grammarIssuesHtml = (!isPart1 && item.grammar_issues && item.grammar_issues.length > 0)
+          ? `
+            <div class="bg-rose-50/70 border border-rose-200 rounded-xl p-4 mb-3 space-y-2.5">
+              <div class="text-xs sm:text-sm font-bold text-rose-800 flex items-center gap-1.5">
+                <span>🔍 문법 오류 및 어색한 표현 체크 (${item.grammar_issues.length}건 감지)</span>
+              </div>
+              <ul class="space-y-2">
+                ${item.grammar_issues.map(issue => `
+                  <li class="bg-white border border-rose-100 rounded-lg p-3 text-xs sm:text-sm">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                      <span class="line-through text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded">${issue.wrong}</span>
+                      <span class="text-slate-400 font-bold">→</span>
+                      <span class="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">${issue.right}</span>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed">💡 ${issue.reason}</p>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          `
+          : (!isPart1 && item.grammar_correction.original !== "(음성 인식된 텍스트 없음)"
+              ? `<div class="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3 mb-3 text-xs sm:text-sm text-emerald-800 font-medium">✨ 발화하신 문장에서 기초적인 문법 오류(수일치·시제·어순 등)가 발견되지 않았습니다. 아래 AI 교정 문장과 비교해 더 세련된 표현을 익혀보세요.</div>`
+              : '');
+
+        const comparisonBlockHtml = isPart1
+          ? `
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs sm:text-sm space-y-2 mb-3">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-navy-800">원문 지문 일치율: ${item.matchRate ?? 0}%</span>
+                <span class="text-xs text-slate-500">변형 없이 원문 그대로 읽기 기준</span>
+              </div>
+              <div><span class="font-bold text-slate-600">내 발화(STT):</span> <span class="text-slate-800">${item.grammar_correction.original}</span></div>
+              <div><span class="font-bold text-emerald-700">제시된 원문(정답 기준):</span> <span class="text-emerald-900 font-medium">${item.grammar_correction.corrected}</span></div>
+            </div>
+            <div class="text-xs sm:text-sm text-slate-700 bg-blue-50/50 p-3.5 rounded-xl border border-blue-100">
+              <strong class="text-navy-900">📌 Part 1 채점 포인트:</strong> ${item.model_answer}
+            </div>
+          `
+          : `
+            ${grammarIssuesHtml}
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs sm:text-sm space-y-2 mb-3">
+              <div><span class="font-bold text-slate-600">내 발화(STT · 오류 하이라이트):</span> <span class="text-slate-800 leading-relaxed">${item.highlighted_original || item.grammar_correction.original}</span></div>
+              <div><span class="font-bold text-emerald-700">AI 자연스러운 교정 문장:</span> <span class="text-emerald-900 font-medium leading-relaxed">${item.grammar_correction.corrected}</span></div>
+              ${item.paraphrasing_tip ? `<div><span class="font-bold text-navy-800">고급 어휘 팁:</span> "${item.paraphrasing_tip.basic}" → <strong class="text-blue-700">"${item.paraphrasing_tip.advanced}"</strong></div>` : ''}
+            </div>
+            <div class="text-xs sm:text-sm text-slate-700 bg-blue-50/50 p-3.5 rounded-xl border border-blue-100">
+              <strong class="text-navy-900">🏆 원어민 모범 답안:</strong> ${item.model_answer}
+            </div>
+          `;
+
+        card.innerHTML = `
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-100">
+            <div>
+              <div class="flex items-center gap-2">
+                <strong class="text-lg font-bold text-navy-800">${item.question_id} (Part ${item.part})</strong>
+                <span class="text-xs font-medium text-slate-400">발화 속도: ${item.wpm || 0} WPM</span>
+              </div>
+              <div class="text-xs text-slate-500 mt-0.5">${item.criteria_label || ''}</div>
+            </div>
+            <span class="bg-navy-800 text-white text-xs font-bold px-3 py-1 rounded-lg">
+              획득 점수: ${item.score} / ${item.max_score}점
+            </span>
+          </div>
+
+          <div class="space-y-2 text-sm text-slate-700 mb-4">
+            <p><strong class="text-emerald-700">✅ 잘한 점:</strong> ${item.strengths.join(' ')}</p>
+            <p><strong class="text-amber-700">💡 보완할 점:</strong> ${item.weaknesses.join(' ')}</p>
+          </div>
+
+          ${comparisonBlockHtml}
+        `;
+        container.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>
